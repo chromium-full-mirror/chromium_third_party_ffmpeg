@@ -54,9 +54,6 @@
 #define MB_CEIL(x)       MB_FLOOR((x) + (MB_SIZE - 1))
 
 typedef struct X264Opaque {
-#if FF_API_REORDERED_OPAQUE
-    int64_t reordered_opaque;
-#endif
     int64_t wallclock;
     int64_t duration;
 
@@ -512,19 +509,6 @@ static int setup_frame(AVCodecContext *ctx, const AVFrame *frame,
             goto fail;
     }
 
-#if FF_API_REORDERED_OPAQUE
-FF_DISABLE_DEPRECATION_WARNINGS
-    /* Chromium https://crbug.com/1415548
-     * This comment is just to cause a conflict if this usage of
-     * `reordered_opaque` ever changes.
-     */
-    opaque->reordered_opaque = frame->reordered_opaque;
-    /* Chromium https://crbug.com/1415548
-     * This comment is just to cause a conflict if this usage of
-     * `reordered_opaque` ever changes.
-     */
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
     opaque->duration         = frame->duration;
     opaque->wallclock = wallclock;
     if (ctx->export_side_data & AV_CODEC_EXPORT_DATA_PRFT)
@@ -689,6 +673,7 @@ static int X264_frame(AVCodecContext *ctx, AVPacket *pkt, const AVFrame *frame,
     out_opaque = pic_out.opaque;
     if (out_opaque >= x4->reordered_opaque &&
         out_opaque < &x4->reordered_opaque[x4->nb_reordered_opaque]) {
+<<<<<<< HEAD
 #if FF_API_REORDERED_OPAQUE
 FF_DISABLE_DEPRECATION_WARNINGS
     /* Chromium https://crbug.com/1415548
@@ -702,6 +687,8 @@ FF_DISABLE_DEPRECATION_WARNINGS
      */
 FF_ENABLE_DEPRECATION_WARNINGS
 #endif
+=======
+>>>>>>> upstream/master
         wallclock = out_opaque->wallclock;
         pkt->duration = out_opaque->duration;
 
@@ -716,11 +703,6 @@ FF_ENABLE_DEPRECATION_WARNINGS
         // Unexpected opaque pointer on picture output
         av_log(ctx, AV_LOG_ERROR, "Unexpected opaque pointer; "
                "this is a bug, please report it.\n");
-#if FF_API_REORDERED_OPAQUE
-FF_DISABLE_DEPRECATION_WARNINGS
-        ctx->reordered_opaque = 0;
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
     }
 
     switch (pic_out.i_type) {
