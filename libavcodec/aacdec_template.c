@@ -1016,6 +1016,9 @@ static int decode_audio_specific_config_gb(AACDecContext *ac,
     skip_bits_long(gb, i);
 
     switch (m4ac->object_type) {
+    // --- Chromium patch to support xHE-AAC demuxing ---
+    case 42: // AAC_xHE
+    // --- End chromium patch.
     case AOT_AAC_MAIN:
     case AOT_AAC_LC:
     case AOT_AAC_SSR:
