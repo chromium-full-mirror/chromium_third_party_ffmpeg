@@ -44,7 +44,7 @@ declare_args() {
 
 # We no longer have a separate ChromeOS configuration, but don't break existing
 # workflows which explicitly specified ChromeOS.
-if (ffmpeg_branding == "ChromeOS") {
+if (ffmpeg_branding != "Chrome") {
   ffmpeg_branding = "Chrome"
 }
 
