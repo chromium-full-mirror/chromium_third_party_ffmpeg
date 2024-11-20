@@ -42,6 +42,7 @@
 /src
 /mapfile
 /tools/python/__pycache__/
+<<<<<<< HEAD
 
 # Chromium stuff.
 /build.*
@@ -52,3 +53,7 @@
 /*.targets
 /*.vcxproj*
 /*.xml
+=======
+/libavcodec/vulkan/*.c
+/libavfilter/vulkan/*.c
+>>>>>>> upstream/master

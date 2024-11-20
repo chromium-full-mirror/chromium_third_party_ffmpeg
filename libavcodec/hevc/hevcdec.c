@@ -3283,11 +3283,9 @@ static int hevc_frame_start(HEVCContext *s, HEVCLayerContext *l,
         goto fail;
 
     if (s->cur_frame->needs_fg &&
-         (s->sei.common.film_grain_characteristics &&
-             s->sei.common.film_grain_characteristics->present &&
-             !ff_h274_film_grain_params_supported(
-                 s->sei.common.film_grain_characteristics->model_id,
-                 s->cur_frame->f->format) ||
+        (s->sei.common.film_grain_characteristics && s->sei.common.film_grain_characteristics->present &&
+         !ff_h274_film_grain_params_supported(s->sei.common.film_grain_characteristics->model_id,
+                                              s->cur_frame->f->format) ||
          !av_film_grain_params_select(s->cur_frame->f))) {
       av_log_once(s->avctx, AV_LOG_WARNING, AV_LOG_DEBUG,
                   &s->film_grain_warning_shown,
@@ -4011,9 +4009,6 @@ static int hevc_update_thread_context(AVCodecContext *dst,
     s->sei.common.frame_packing        = s0->sei.common.frame_packing;
     s->sei.common.display_orientation  = s0->sei.common.display_orientation;
     s->sei.common.alternative_transfer = s0->sei.common.alternative_transfer;
-    s->sei.common.mastering_display    = s0->sei.common.mastering_display;
-    s->sei.common.content_light        = s0->sei.common.content_light;
-    s->sei.common.aom_film_grain       = s0->sei.common.aom_film_grain;
     s->sei.tdrdi                       = s0->sei.tdrdi;
 
     return 0;
