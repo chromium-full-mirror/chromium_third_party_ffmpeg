@@ -847,6 +847,7 @@ static const StreamType SCTE_types[] = {
 /* ATSC ? */
 static const StreamType MISC_types[] = {
     { 0x81, AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC3 },
+    { 0x87, AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_EAC3 },
     { 0x8a, AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_DTS },
     { 0 },
 };
@@ -1671,6 +1672,8 @@ static int mp4_read_iods(AVFormatContext *s, const uint8_t *buf, unsigned size,
 {
     MP4DescrParseContext d;
     int ret;
+
+    d.predefined_SLConfigDescriptor_seen = 0;
 
     ret = init_MP4DescrParseContext(&d, s, buf, size, descr, max_descr_count);
     if (ret < 0)

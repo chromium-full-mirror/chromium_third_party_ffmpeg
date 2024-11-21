@@ -2617,7 +2617,7 @@ static int mov_write_video_tag(AVFormatContext *s, AVIOContext *pb, MOVMuxContex
                            || (track->par->codec_id == AV_CODEC_ID_RAWVIDEO && track->par->format == AV_PIX_FMT_YUYV422)
                            || (track->par->codec_id == AV_CODEC_ID_RAWVIDEO && track->par->format == AV_PIX_FMT_VYU444)
                            || (track->par->codec_id == AV_CODEC_ID_RAWVIDEO && track->par->format == AV_PIX_FMT_UYVA)
-                           || (track->par->codec_id == AV_CODEC_ID_RAWVIDEO && track->par->format == AV_PIX_FMT_V30X)
+                           || (track->par->codec_id == AV_CODEC_ID_RAWVIDEO && track->par->format == AV_PIX_FMT_V30XLE)
 #if FF_API_V408_CODECID
                            ||  track->par->codec_id == AV_CODEC_ID_V308
                            ||  track->par->codec_id == AV_CODEC_ID_V408
@@ -8590,6 +8590,7 @@ static const AVCodecTag codec_mp4_tags[] = {
     { AV_CODEC_ID_MPEGH_3D_AUDIO,  MKTAG('m', 'h', 'm', '1') },
     { AV_CODEC_ID_TTML,            MOV_MP4_TTML_TAG          },
     { AV_CODEC_ID_TTML,            MOV_ISMV_TTML_TAG         },
+    { AV_CODEC_ID_FFV1,            MKTAG('F', 'F', 'V', '1') },
 
     /* ISO/IEC 23003-5 integer formats */
     { AV_CODEC_ID_PCM_S16BE,       MOV_MP4_IPCM_TAG          },

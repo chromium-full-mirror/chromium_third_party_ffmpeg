@@ -127,7 +127,7 @@ static int cmp_off_by_n(const uint8_t *ref, const uint8_t *test, size_t n, int a
     return 0;
 }
 
-static void check_rgb24toyv12(struct SwsContext *ctx)
+static void check_rgb24toyv12(SwsInternal *ctx)
 {
     static const int input_sizes[] = {16, 128, 512, MAX_LINE_SIZE, -MAX_LINE_SIZE};
 
@@ -353,7 +353,7 @@ static const enum AVPixelFormat rgb_formats[] = {
         AV_PIX_FMT_ARGB,
 };
 
-static void check_rgb_to_y(struct SwsContext *ctx)
+static void check_rgb_to_y(SwsInternal *ctx)
 {
     LOCAL_ALIGNED_16(uint8_t, src24,  [MAX_LINE_SIZE * 3]);
     LOCAL_ALIGNED_16(uint8_t, src32,  [MAX_LINE_SIZE * 4]);
@@ -370,7 +370,7 @@ static void check_rgb_to_y(struct SwsContext *ctx)
     for (int i = 0; i < FF_ARRAY_ELEMS(rgb_formats); i++) {
         const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(rgb_formats[i]);
 
-        ctx->srcFormat = rgb_formats[i];
+        ctx->opts.src_format = rgb_formats[i];
         ff_sws_init_scale(ctx);
 
         for (int j = 0; j < FF_ARRAY_ELEMS(input_sizes); j++) {
@@ -389,14 +389,14 @@ static void check_rgb_to_y(struct SwsContext *ctx)
 
                 if (desc->nb_components == 3 ||
                     // only bench native endian formats
-                    (ctx->srcFormat == AV_PIX_FMT_RGB32 || ctx->srcFormat == AV_PIX_FMT_RGB32_1))
+                    (ctx->opts.src_format == AV_PIX_FMT_RGB32 || ctx->opts.src_format == AV_PIX_FMT_RGB32_1))
                     bench_new(dst1_y, src, NULL, NULL, w, ctx->input_rgb2yuv_table, NULL);
             }
         }
     }
 }
 
-static void check_rgb_to_uv(struct SwsContext *ctx)
+static void check_rgb_to_uv(SwsInternal *ctx)
 {
     LOCAL_ALIGNED_16(uint8_t, src24,  [MAX_LINE_SIZE * 3]);
     LOCAL_ALIGNED_16(uint8_t, src32,  [MAX_LINE_SIZE * 4]);
@@ -417,8 +417,8 @@ static void check_rgb_to_uv(struct SwsContext *ctx)
         const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(src_fmt);
 
         ctx->chrSrcHSubSample = (i % 2) ? 0 : 1;
-        ctx->srcFormat = src_fmt;
-        ctx->dstFormat = ctx->chrSrcHSubSample ? AV_PIX_FMT_YUV420P : AV_PIX_FMT_YUV444P;
+        ctx->opts.src_format = src_fmt;
+        ctx->opts.dst_format = ctx->chrSrcHSubSample ? AV_PIX_FMT_YUV420P : AV_PIX_FMT_YUV444P;
         ff_sws_init_scale(ctx);
 
         for (int j = 0; j < FF_ARRAY_ELEMS(input_sizes); j++) {
@@ -441,7 +441,7 @@ static void check_rgb_to_uv(struct SwsContext *ctx)
 
                 if (desc->nb_components == 3 ||
                     // only bench native endian formats
-                    (ctx->srcFormat == AV_PIX_FMT_RGB32 || ctx->srcFormat == AV_PIX_FMT_RGB32_1))
+                    (ctx->opts.src_format == AV_PIX_FMT_RGB32 || ctx->opts.src_format == AV_PIX_FMT_RGB32_1))
                     bench_new(dst1_u, dst1_v, NULL, src, src, w, ctx->input_rgb2yuv_table, NULL);
             }
         }
@@ -450,7 +450,8 @@ static void check_rgb_to_uv(struct SwsContext *ctx)
 
 void checkasm_check_sw_rgb(void)
 {
-    struct SwsContext *ctx;
+    SwsContext *sws;
+    SwsInternal *c;
 
     ff_sws_rgb2rgb_init();
 
@@ -478,20 +479,21 @@ void checkasm_check_sw_rgb(void)
     check_deinterleave_bytes();
     report("deinterleave_bytes");
 
-    ctx = sws_getContext(MAX_LINE_SIZE, MAX_LINE_SIZE, AV_PIX_FMT_RGB24,
+    sws = sws_getContext(MAX_LINE_SIZE, MAX_LINE_SIZE, AV_PIX_FMT_RGB24,
                          MAX_LINE_SIZE, MAX_LINE_SIZE, AV_PIX_FMT_YUV420P,
                          SWS_ACCURATE_RND | SWS_BITEXACT, NULL, NULL, NULL);
-    if (!ctx)
+    if (!sws)
         fail();
 
-    check_rgb_to_y(ctx);
+    c = sws_internal(sws);
+    check_rgb_to_y(c);
     report("rgb_to_y");
 
-    check_rgb_to_uv(ctx);
+    check_rgb_to_uv(c);
     report("rgb_to_uv");
 
-    check_rgb24toyv12(ctx);
+    check_rgb24toyv12(c);
     report("rgb24toyv12");
 
-    sws_freeContext(ctx);
+    sws_freeContext(sws);
 }
