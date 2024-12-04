@@ -96,6 +96,8 @@
 
 #if ARCH_AARCH64
 #include "libavutil/aarch64/cpu.h"
+#elif ARCH_RISCV
+#include "libavutil/riscv/cpu.h"
 #endif
 
 #if ARCH_ARM && HAVE_ARMV5TE_EXTERNAL
@@ -137,6 +139,9 @@ static const struct {
     #endif
     #if CONFIG_DCA_DECODER
         { "synth_filter", checkasm_check_synth_filter },
+    #endif
+    #if CONFIG_DIRAC_DECODER
+        { "diracdsp", checkasm_check_diracdsp },
     #endif
     #if CONFIG_EXR_DECODER
         { "exrdsp", checkasm_check_exrdsp },
@@ -358,6 +363,8 @@ static const struct {
 #elif ARCH_LOONGARCH
     { "LSX",      "lsx",      AV_CPU_FLAG_LSX },
     { "LASX",     "lasx",     AV_CPU_FLAG_LASX },
+#elif ARCH_WASM
+    { "SIMD128",    "simd128",  AV_CPU_FLAG_SIMD128 },
 #endif
     { NULL }
 };
@@ -765,6 +772,8 @@ static LONG NTAPI signal_handler(EXCEPTION_POINTERS *e) {
 }
 #endif
 #else
+
+#ifndef _WASI_EMULATED_SIGNAL
 static void signal_handler(int s);
 
 static const struct sigaction signal_handler_act = {
@@ -779,6 +788,8 @@ static void signal_handler(int s) {
         checkasm_load_context(s);
     }
 }
+#endif // _WASI_EMULATED_SIGNAL
+
 #endif
 
 /* Compares a string with a wildcard pattern. */
@@ -928,10 +939,12 @@ int main(int argc, char *argv[])
     AddVectoredExceptionHandler(0, signal_handler);
 #endif
 #else
+#ifndef _WASI_EMULATED_SIGNAL
     sigaction(SIGBUS,  &signal_handler_act, NULL);
     sigaction(SIGFPE,  &signal_handler_act, NULL);
     sigaction(SIGILL,  &signal_handler_act, NULL);
     sigaction(SIGSEGV, &signal_handler_act, NULL);
+#endif // _WASI_EMULATED_SIGNAL
 #endif
 #if HAVE_PRCTL && defined(PR_SET_UNALIGN)
     prctl(PR_SET_UNALIGN, PR_UNALIGN_SIGBUS);
@@ -990,6 +1003,10 @@ int main(int argc, char *argv[])
     if (have_sve(av_get_cpu_flags()))
         snprintf(arch_info_buf, sizeof(arch_info_buf),
                  "SVE %d bits, ", 8 * ff_aarch64_sve_length());
+#elif ARCH_RISCV && HAVE_RVV
+    if (av_get_cpu_flags() & AV_CPU_FLAG_RVV_I32)
+        snprintf(arch_info_buf, sizeof (arch_info_buf),
+                 "%zu-bit vectors, ", 8 * ff_get_rv_vlenb());
 #endif
     fprintf(stderr, "checkasm: %susing random seed %u\n", arch_info_buf, seed);
     av_lfg_init(&checkasm_lfg, seed);
