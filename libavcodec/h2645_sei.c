@@ -247,14 +247,9 @@ static int decode_registered_user_data(H2645SEI *h, GetByteContext *gb,
 
         provider_oriented_code = bytestream2_get_byteu(gb);
         if (provider_oriented_code == aom_grain_provider_oriented_code) {
-            if (!h->aom_film_grain) {
-                h->aom_film_grain = av_mallocz(sizeof(*h->aom_film_grain));
-                if (!h->aom_film_grain)
-                    return AVERROR(ENOMEM);
-            }
-            return ff_aom_parse_film_grain_sets(h->aom_film_grain,
-                                                gb->buffer,
-                                                bytestream2_get_bytes_left(gb));
+            return ff_aom_parse_fim_grain_sets(&h->aom_film_grain,
+                                               gb->buffer,
+                                               bytestream2_get_bytes_left(gb));
         }
         break;
     }
@@ -553,13 +548,13 @@ int ff_h2645_sei_ctx_replace(H2645SEI *dst, const H2645SEI *src)
         }
     }
 
-    for (unsigned i = 0; i < FF_ARRAY_ELEMS(dst->aom_film_grain->sets); i++) {
-        ret = av_buffer_replace(&dst->aom_film_grain->sets[i],
-                                 src->aom_film_grain->sets[i]);
+    for (unsigned i = 0; i < FF_ARRAY_ELEMS(dst->aom_film_grain.sets); i++) {
+        ret = av_buffer_replace(&dst->aom_film_grain.sets[i],
+                                 src->aom_film_grain.sets[i]);
         if (ret < 0)
             return ret;
     }
-    dst->aom_film_grain->enable = src->aom_film_grain->enable;
+    dst->aom_film_grain.enable = src->aom_film_grain.enable;
 
     dst->mastering_display     = src->mastering_display;
     dst->content_light         = src->content_light;
@@ -909,11 +904,9 @@ FF_ENABLE_DEPRECATION_WARNINGS
     }
 
 #if CONFIG_HEVC_SEI
-    if (sei->aom_film_grain) {
-        ret = ff_aom_attach_film_grain_sets(sei->aom_film_grain, frame);
-        if (ret < 0)
-            return ret;
-    }
+    ret = ff_aom_attach_film_grain_sets(&sei->aom_film_grain, frame);
+    if (ret < 0)
+        return ret;
 #endif
 
     return 0;
@@ -942,5 +935,7 @@ void ff_h2645_sei_reset(H2645SEI *s)
     s->content_light.present = 0;
 
     ff_refstruct_unref(&s->film_grain_characteristics);
-    av_freep(&s->aom_film_grain);
+#if CONFIG_HEVC_SEI
+    ff_aom_uninit_film_grain_params(&s->aom_film_grain);
+#endif
 }
