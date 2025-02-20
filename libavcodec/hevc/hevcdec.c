@@ -3275,8 +3275,7 @@ static int hevc_frame_start(HEVCContext *s, HEVCLayerContext *l,
     s->cur_frame->needs_fg =
         ((s->sei.common.film_grain_characteristics &&
           s->sei.common.film_grain_characteristics->present) ||
-         (s->sei.common.aom_film_grain &&
-          s->sei.common.aom_film_grain->enable)) &&
+          s->sei.common.aom_film_grain.enable) &&
         !(s->avctx->export_side_data & AV_CODEC_EXPORT_DATA_FILM_GRAIN) &&
         !s->avctx->hwaccel;
 
