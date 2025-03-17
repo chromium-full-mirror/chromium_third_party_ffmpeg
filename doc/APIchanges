@@ -2,7 +2,42 @@ The last version increases of all libraries were on 2024-03-07
 
 API changes, most recent first:
 
-2025-01-05 - xxxxxxxxxx - lavc 59.55.100 - frame.h
+2025-03-17 - xxxxxxxxxx - lavu 59.60.100 - pixfmt.h
+  Add AV_PIX_FMT_GBRAP32BE and AV_PIX_FMT_GBRAP32LE.
+
+2025-03-10 - xxxxxxxxxx - lavu 59.59.100 - pixfmt.h
+  Add AV_PIX_FMT_YAF16BE, AV_PIX_FMT_YAF16LE, AV_PIX_FMT_YAF32BE,
+  and AV_PIX_FMT_YAF32LE.
+
+2025-03-01 - xxxxxxxxxx - lavu 59.58.100 - pixfmt.h
+  Add AV_PIX_FMT_GRAY32BE and AV_PIX_FMT_GRAY32LE.
+
+2025-02-04 - xxxxxxxxxx - lavu 59.56.000 - pixfmt.h
+  Add AV_PIX_FMT_AMF_SURFACE.
+
+2025-01-09 - xxxxxxxxxx - lavu 59.55.100 - pixfmt.h
+  Add AV_PIX_FMT_GBRPF16BE, AV_PIX_FMT_GBRPF16LE, AV_PIX_FMT_GBRAPF16BE,
+  AV_PIX_FMT_GBRAPF16LE, AV_PIX_FMT_GRAYF16BE, and AV_PIX_FMT_GRAYF16LE.
+
+2025-02-xx - xxxxxxxxxx - lavu 59.57.100 - log.h
+  Add flags AV_LOG_PRINT_TIME and AV_LOG_PRINT_DATETIME.
+
+2025-02-09 - xxxxxxxxxx - lavc 61.32.100 - codec_id.h
+  Add AV_CODEC_ID_IVTV_VBI.
+
+2025-01-25 - xxxxxxxxxx - lavu 59.56.100 - frame.h
+  Add AV_SIDE_DATA_PROP_CHANNEL_DEPENDENT.
+
+2025-01-25 - xxxxxxxxxx - lavfi 10.9.100 - buffersink.h
+  Add av_buffersink_get_side_data().
+
+2025-01-25 - xxxxxxxxxx - lavfi 10.8.100 - buffersrc.h
+  Add AVBufferSrcParameters.side_data and AVBufferSrcParameters.nb_side_data
+
+2025-01-25 - xxxxxxxxxx - lavfi 10.7.100 - avfilter.h
+  Add AVFilterLink.side_data and AVFilterLink.nb_side_data
+
+2025-01-05 - xxxxxxxxxx - lavu 59.55.100 - frame.h
   Add AV_FRAME_SIDE_DATA_FLAG_NEW_REF.
 
 2025-01-05 - xxxxxxxxxx - lavc 61.31.100 - avcodec.h
