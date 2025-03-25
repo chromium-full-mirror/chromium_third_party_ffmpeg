@@ -176,6 +176,9 @@ config("ffmpeg_warnings") {
 
       # Various files convert MAX_INT to double and similar without casting.
       "-Wno-implicit-int-float-conversion",
+
+      # codec_internal.h forward declares some enums.
+      "-Wno-microsoft-enum-forward-reference",
     ]
 
     if (target_cpu == "arm" || target_cpu == "arm64") {
