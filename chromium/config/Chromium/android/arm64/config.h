@@ -6,7 +6,7 @@
 #define CONFIG_THIS_YEAR 2025
 #define FFMPEG_DATADIR "/usr/local/share/ffmpeg"
 #define AVCONV_DATADIR "/usr/local/share/ffmpeg"
-#define CC_IDENT "clang version 21.0.0git (https://chromium.googlesource.com/a/external/github.com/llvm/llvm-project 52cd27e60b2421feeee5afa9269c53fb0cb366a7)"
+#define CC_IDENT "clang version 21.0.0git (https://chromium.googlesource.com/a/external/github.com/llvm/llvm-project 09006611151c7f85862a9da8da34872c456c2c37)"
 #define OS_NAME android
 #define EXTERN_PREFIX ""
 #define EXTERN_ASM 
@@ -231,11 +231,6 @@
 #define HAVE_CDIO_PARANOIA_PARANOIA_H 0
 #define HAVE_CUDA_H 0
 #define HAVE_DISPATCH_DISPATCH_H 0
-#define HAVE_DEV_BKTR_IOCTL_BT848_H 0
-#define HAVE_DEV_BKTR_IOCTL_METEOR_H 0
-#define HAVE_DEV_IC_BT8XX_H 0
-#define HAVE_DEV_VIDEO_BKTR_IOCTL_BT848_H 0
-#define HAVE_DEV_VIDEO_METEOR_IOCTL_METEOR_H 0
 #define HAVE_DIRECT_H 0
 #define HAVE_DIRENT_H 1
 #define HAVE_DXGIDEBUG_H 0
@@ -245,11 +240,8 @@
 #define HAVE_IO_H 0
 #define HAVE_LINUX_DMA_BUF_H 0
 #define HAVE_LINUX_PERF_EVENT_H 1
-#define HAVE_MACHINE_IOCTL_BT848_H 0
-#define HAVE_MACHINE_IOCTL_METEOR_H 0
 #define HAVE_MALLOC_H 1
 #define HAVE_OPENCV2_CORE_CORE_C_H 0
-#define HAVE_OPENGL_GL3_H 0
 #define HAVE_POLL_H 1
 #define HAVE_PTHREAD_NP_H 0
 #define HAVE_SYS_HWPROBE_H 0
@@ -701,6 +693,7 @@
 #define CONFIG_BSWAPDSP 0
 #define CONFIG_CABAC 0
 #define CONFIG_CBS 0
+#define CONFIG_CBS_APV 0
 #define CONFIG_CBS_AV1 0
 #define CONFIG_CBS_H264 0
 #define CONFIG_CBS_H265 0
