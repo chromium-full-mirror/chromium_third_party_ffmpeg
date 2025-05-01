@@ -32,7 +32,6 @@
 #include "libavutil/attributes.h"
 #include "libavutil/bprint.h"
 #include "libavutil/channel_layout.h"
-#include "libavutil/dict_internal.h"
 #include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/intfloat.h"
@@ -1858,7 +1857,7 @@ static void mov_metadata_creation_time(MOVContext *c, AVIOContext *pb, AVDiction
             return;
         }
 
-        avpriv_dict_set_timestamp(metadata, "creation_time", time * 1000000);
+        ff_dict_set_timestamp(metadata, "creation_time", time * 1000000);
     }
 }
 
@@ -4493,7 +4492,7 @@ static void mov_fix_index(MOVContext *mov, AVStream *st)
 static uint32_t get_sgpd_sync_index(const MOVStreamContext *sc, int nal_unit_type)
 {
     for (uint32_t i = 0; i < sc->sgpd_sync_count; i++)
-        if (sc->sgpd_sync[i] == HEVC_NAL_CRA_NUT)
+        if (sc->sgpd_sync[i] == nal_unit_type)
             return i + 1;
     return 0;
 }
@@ -10736,7 +10735,7 @@ static AVIndexEntry *mov_find_next_sample(AVFormatContext *s, AVStream **st)
                 ((s->pb->seekable & AVIO_SEEKABLE_NORMAL) &&
                  ((msc->pb != s->pb && dts < best_dts) || (msc->pb == s->pb && dts != AV_NOPTS_VALUE &&
                  ((dtsdiff <= AV_TIME_BASE && current_sample->pos < sample->pos) ||
-                  (dtsdiff > AV_TIME_BASE && dts < best_dts)))))) {
+                  (dtsdiff > AV_TIME_BASE && dts < best_dts && mov->interleaved_read)))))) {
                 sample = current_sample;
                 best_dts = dts;
                 *st = avst;

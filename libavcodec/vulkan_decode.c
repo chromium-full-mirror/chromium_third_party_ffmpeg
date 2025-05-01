@@ -96,11 +96,9 @@ int ff_vk_update_thread_context(AVCodecContext *dst, const AVCodecContext *src)
 
     av_refstruct_replace(&dst_ctx->shared_ctx, src_ctx->shared_ctx);
 
-    if (src_ctx->session_params) {
-        err = av_buffer_replace(&dst_ctx->session_params, src_ctx->session_params);
-        if (err < 0)
-            return err;
-    }
+    err = av_buffer_replace(&dst_ctx->session_params, src_ctx->session_params);
+    if (err < 0)
+        return err;
 
     dst_ctx->dedicated_dpb = src_ctx->dedicated_dpb;
     dst_ctx->external_fg = src_ctx->external_fg;
@@ -259,7 +257,7 @@ int ff_vk_decode_add_slice(AVCodecContext *avctx, FFVulkanDecodePicture *vp,
 
     static const uint8_t startcode_prefix[3] = { 0x0, 0x0, 0x1 };
     const size_t startcode_len = add_startcode ? sizeof(startcode_prefix) : 0;
-    const int nb = *nb_slices;
+    const int nb = nb_slices ? *nb_slices : 0;
     uint8_t *slices;
     uint32_t *slice_off;
     FFVkBuffer *vkbuf;
@@ -268,13 +266,16 @@ int ff_vk_decode_add_slice(AVCodecContext *avctx, FFVulkanDecodePicture *vp,
                       ctx->caps.minBitstreamBufferSizeAlignment;
     new_size = FFALIGN(new_size, ctx->caps.minBitstreamBufferSizeAlignment);
 
-    slice_off = av_fast_realloc(dec->slice_off, &dec->slice_off_max,
-                                (nb + 1)*sizeof(slice_off));
-    if (!slice_off)
-        return AVERROR(ENOMEM);
+    if (offsets) {
+        slice_off = av_fast_realloc(dec->slice_off, &dec->slice_off_max,
+                                    (nb + 1)*sizeof(slice_off));
+        if (!slice_off)
+            return AVERROR(ENOMEM);
 
-    *offsets = dec->slice_off = slice_off;
-    slice_off[nb] = vp->slices_size;
+        *offsets = dec->slice_off = slice_off;
+
+        slice_off[nb] = vp->slices_size;
+    }
 
     vkbuf = vp->slices_buf ? (FFVkBuffer *)vp->slices_buf->data : NULL;
     if (!vkbuf || vkbuf->size < new_size) {
@@ -320,7 +321,9 @@ int ff_vk_decode_add_slice(AVCodecContext *avctx, FFVulkanDecodePicture *vp,
     /* Slice data */
     memcpy(slices + vp->slices_size + startcode_len, data, size);
 
-    *nb_slices = nb + 1;
+    if (nb_slices)
+        *nb_slices = nb + 1;
+
     vp->slices_size += startcode_len + size;
 
     return 0;
@@ -381,11 +384,12 @@ int ff_vk_decode_frame(AVCodecContext *avctx,
     /* Quirks */
     const int layered_dpb = ctx->common.layered_dpb;
 
-    VkVideoSessionParametersKHR *par = (VkVideoSessionParametersKHR *)dec->session_params->data;
     VkVideoBeginCodingInfoKHR decode_start = {
         .sType = VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR,
         .videoSession = ctx->common.session,
-        .videoSessionParameters = *par,
+        .videoSessionParameters = dec->session_params ?
+                                  *((VkVideoSessionParametersKHR *)dec->session_params->data) :
+                                  VK_NULL_HANDLE,
         .referenceSlotCount = vp->decode_info.referenceSlotCount,
         .pReferenceSlots = vp->decode_info.pReferenceSlots,
     };
@@ -1066,7 +1070,8 @@ int ff_vk_frame_params(AVCodecContext *avctx, AVBufferRef *hw_frames_ctx)
 
     hwfc->format[0]    = vkfmt;
     hwfc->tiling       = VK_IMAGE_TILING_OPTIMAL;
-    hwfc->usage        = VK_IMAGE_USAGE_TRANSFER_SRC_BIT         |
+    hwfc->usage        = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                         VK_IMAGE_USAGE_STORAGE_BIT      |
                          VK_IMAGE_USAGE_SAMPLED_BIT;
 
     if (prof) {
@@ -1080,8 +1085,6 @@ int ff_vk_frame_params(AVCodecContext *avctx, AVBufferRef *hw_frames_ctx)
         if (ctx->s.extensions & (FF_VK_EXT_VIDEO_ENCODE_QUEUE |
                                  FF_VK_EXT_VIDEO_MAINTENANCE_1))
             hwfc->usage |= VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR;
-    } else if (DECODER_IS_SDR(avctx->codec_id)) {
-        hwfc->usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
 
     return err;

@@ -16,22 +16,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVUTIL_DICT_INTERNAL_H
-#define AVUTIL_DICT_INTERNAL_H
+#include "avformat.h"
+#include "mux.h"
 
-#include <stdint.h>
+static int apv_write_packet(AVFormatContext *s, AVPacket *pkt)
+{
+    avio_wb32(s->pb, pkt->size);
+    avio_write(s->pb, pkt->data, pkt->size);
+    return 0;
+}
 
-#include "dict.h"
-
-/**
- * Set a dictionary value to an ISO-8601 compliant timestamp string.
- *
- * @param dict pointer to a pointer to a dictionary struct. If *dict is NULL
- *             a dictionary struct is allocated and put in *dict.
- * @param key metadata key
- * @param timestamp unix timestamp in microseconds
- * @return <0 on error
- */
-int avpriv_dict_set_timestamp(AVDictionary **dict, const char *key, int64_t timestamp);
-
-#endif /* AVUTIL_DICT_INTERNAL_H */
+const FFOutputFormat ff_apv_muxer = {
+    .p.name           = "apv",
+    .p.long_name      = NULL_IF_CONFIG_SMALL("APV raw bitstream"),
+    .p.extensions     = "apv",
+    .p.audio_codec    = AV_CODEC_ID_NONE,
+    .p.video_codec    = AV_CODEC_ID_APV,
+    .p.subtitle_codec = AV_CODEC_ID_NONE,
+    .p.flags          = AVFMT_NOTIMESTAMPS,
+    .flags_internal   = FF_OFMT_FLAG_MAX_ONE_OF_EACH | FF_OFMT_FLAG_ONLY_DEFAULT_CODECS,
+    .write_packet     = apv_write_packet,
+};

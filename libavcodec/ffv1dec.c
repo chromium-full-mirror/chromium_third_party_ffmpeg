@@ -99,6 +99,16 @@ static int decode_plane(FFV1Context *f, FFV1SliceContext *sc,
 {
     int x, y;
     int16_t *sample[2];
+    int bits;
+    unsigned mask;
+
+    if (sc->remap) {
+        bits = av_ceil_log2(sc->remap_count[remap_index]);
+        mask = (1<<bits)-1;
+    } else {
+        bits = f->avctx->bits_per_raw_sample;
+    }
+
     sample[0] = sc->sample_buffer + 3;
     sample[1] = sc->sample_buffer + w + 6 + 3;
 
@@ -125,18 +135,18 @@ static int decode_plane(FFV1Context *f, FFV1SliceContext *sc,
             for (x = 0; x < w; x++)
                 src[x*pixel_stride + stride * y] = sample[1][x];
         } else {
-            int ret = decode_line(f, sc, gb, w, sample, plane_index, f->avctx->bits_per_raw_sample, ac);
+            int ret = decode_line(f, sc, gb, w, sample, plane_index, bits, ac);
             if (ret < 0)
                 return ret;
 
             if (sc->remap) {
                 if (f->packed_at_lsb || f->avctx->bits_per_raw_sample == 16) {
                     for (x = 0; x < w; x++) {
-                        ((uint16_t*)(src + stride*y))[x*pixel_stride] = sc->fltmap[remap_index][sample[1][x] & 0xFFFF];
+                        ((uint16_t*)(src + stride*y))[x*pixel_stride] = sc->fltmap[remap_index][sample[1][x] & mask];
                     }
                 } else {
                     for (x = 0; x < w; x++) {
-                        int v = sc->fltmap[remap_index][sample[1][x] & 0xFFFF];
+                        int v = sc->fltmap[remap_index][sample[1][x] & mask];
                         ((uint16_t*)(src + stride*y))[x*pixel_stride] = v << (16 - f->avctx->bits_per_raw_sample) | v >> (2 * f->avctx->bits_per_raw_sample - 16);
                     }
                 }
@@ -249,6 +259,12 @@ static int decode_slice_header(const FFV1Context *f,
             }
         }
     }
+    if (f->avctx->bits_per_raw_sample == 32) {
+        if (!sc->remap) {
+            av_log(f->avctx, AV_LOG_ERROR, "unsupported remap\n");
+            return AVERROR_INVALIDDATA;
+        }
+    }
 
     return 0;
 }
@@ -263,33 +279,75 @@ static void slice_set_damaged(FFV1Context *f, FFV1SliceContext *sc)
         f->frame_damaged = 1;
 }
 
+static int decode_current_mul(RangeCoder *rc, uint8_t state[32], int *mul, int mul_count, int64_t i)
+{
+    int ndx = (i * mul_count) >> 32;
+    av_assert2(ndx <= 4096U);
+
+    if (mul[ndx] < 0)
+        mul[ndx] = ff_ffv1_get_symbol(rc, state, 0) & 0x3FFFFFFF;
+
+    return mul[ndx];
+}
+
 static int decode_remap(FFV1Context *f, FFV1SliceContext *sc)
 {
-    int flip = sc->remap == 2 ? 0x7FFF : 0;
+    unsigned int end = (1LL<<f->avctx->bits_per_raw_sample) - 1;
+    int flip = sc->remap == 2 ? (end>>1) : 0;
+    const int pixel_num = sc->slice_width * sc->slice_height;
 
     for (int p= 0; p < 1 + 2*f->chroma_planes + f->transparency; p++) {
         int j = 0;
         int lu = 0;
-        uint8_t state[2][32];
-        memset(state, 128, sizeof(state));
+        uint8_t state[2][3][32];
+        int64_t i;
+        int mul[4096+1];
+        int mul_count;
 
-        for (int i= 0; i<65536; i++) {
-            int run = get_symbol_inline(&sc->c, state[lu], 0);
-            if (run > 65536U - i)
-                return AVERROR_INVALIDDATA;
-            if (lu) {
-                lu ^= !run;
-                while (run--) {
-                    sc->fltmap[p][j++] = i ^ ((i&0x8000) ? 0 : flip);
-                    i++;
-                }
-            } else {
-                i += run;
-                if (i != 65536)
-                    sc->fltmap[p][j++] = i ^ ((i&0x8000) ? 0 : flip);
-                lu ^= !run;
-            }
+        memset(state, 128, sizeof(state));
+        mul_count = ff_ffv1_get_symbol(&sc->c, state[0][0], 0);
+
+        if (mul_count > 4096U)
+            return AVERROR_INVALIDDATA;
+        for (int i = 0; i<mul_count; i++) {
+            mul[i] = -1;
+
         }
+        mul[mul_count] = 1;
+
+        memset(state, 128, sizeof(state));
+        int current_mul = 1;
+        for (i=0; i <= end ;) {
+            unsigned run = get_symbol_inline(&sc->c, state[lu][0], 0);
+            unsigned run0 = lu ? 0   : run;
+            unsigned run1 = lu ? run : 1;
+
+            i += run0 * current_mul;
+
+            while (run1--) {
+                if (current_mul > 1) {
+                    int delta = get_symbol_inline(&sc->c, state[lu][1], 1);
+                    if (delta <= -current_mul || delta > current_mul/2)
+                        return AVERROR_INVALIDDATA; //not sure we should check this
+                    i += current_mul - 1 + delta;
+                }
+                if (i - 1 >= end)
+                    break;
+                if (j >= pixel_num)
+                    return AVERROR_INVALIDDATA;
+                if (end <= 0xFFFF) {
+                    sc->fltmap  [p][j++] = i ^ ((i&    0x8000) ? 0 : flip);
+                } else
+                    sc->fltmap32[p][j++] = i ^ ((i&0x80000000) ? 0 : flip);
+                i++;
+                current_mul = decode_current_mul(&sc->c, state[0][2], mul, mul_count, i);
+            }
+            if (lu) {
+                i += current_mul;
+            }
+            lu ^= !run;
+        }
+        sc->remap_count[p] = j;
     }
     return 0;
 }
@@ -337,6 +395,20 @@ static int decode_slice(AVCodecContext *c, void *arg)
     y      = sc->slice_y;
 
     if (sc->remap) {
+        const int pixel_num = sc->slice_width * sc->slice_height;
+
+        for(int p = 0; p < 1 + 2*f->chroma_planes + f->transparency ; p++) {
+            if (f->avctx->bits_per_raw_sample == 32) {
+                av_fast_malloc(&sc->fltmap32[p], &sc->fltmap32_size[p], pixel_num * sizeof(*sc->fltmap32[p]));
+                if (!sc->fltmap32[p])
+                    return AVERROR(ENOMEM);
+            } else {
+                av_fast_malloc(&sc->fltmap[p], &sc->fltmap_size[p], pixel_num * sizeof(*sc->fltmap[p]));
+                if (!sc->fltmap[p])
+                    return AVERROR(ENOMEM);
+            }
+        }
+
         ret = decode_remap(f, sc);
         if (ret < 0)
             return ret;
