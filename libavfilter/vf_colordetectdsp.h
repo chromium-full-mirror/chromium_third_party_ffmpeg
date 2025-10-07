@@ -16,15 +16,25 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVFILTER_COLORDETECT_H
-#define AVFILTER_COLORDETECT_H
+#ifndef AVFILTER_COLORDETECTDSP_H
+#define AVFILTER_COLORDETECTDSP_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include <libavutil/avassert.h>
-#include <libavutil/macros.h>
-#include <libavutil/pixfmt.h>
+#include "config.h"
+
+#include "libavutil/attributes.h"
+#include "libavutil/avassert.h"
+#include "libavutil/pixfmt.h"
+
+enum FFAlphaDetect {
+    FF_ALPHA_NONE         = -1,
+    FF_ALPHA_UNDETERMINED = 0,
+    FF_ALPHA_TRANSPARENT  = 1 << 0, ///< alpha < alpha_max
+    FF_ALPHA_STRAIGHT     = (1 << 1) | FF_ALPHA_TRANSPARENT, ///< alpha < pixel
+    /* No way to positively identify premultiplied alpha */
+};
 
 typedef struct FFColorDetectDSPContext {
     /* Returns 1 if an out-of-range value was detected, 0 otherwise */
@@ -32,16 +42,15 @@ typedef struct FFColorDetectDSPContext {
                         ptrdiff_t width, ptrdiff_t height,
                         int mpeg_min, int mpeg_max);
 
-    /* Returns 1 if the color value exceeds the alpha value, 0 otherwise */
+    /* Returns an FFAlphaDetect enum value */
     int (*detect_alpha)(const uint8_t *color, ptrdiff_t color_stride,
                         const uint8_t *alpha, ptrdiff_t alpha_stride,
                         ptrdiff_t width, ptrdiff_t height,
-                        int p, int q, int k);
+                        int alpha_max, int mpeg_range, int offset);
 } FFColorDetectDSPContext;
 
-void ff_color_detect_dsp_init(FFColorDetectDSPContext *dsp, int depth,
-                              enum AVColorRange color_range);
-
+void ff_color_detect_dsp_init_aarch64(FFColorDetectDSPContext *dsp, int depth,
+                                      enum AVColorRange color_range);
 void ff_color_detect_dsp_init_x86(FFColorDetectDSPContext *dsp, int depth,
                                   enum AVColorRange color_range);
 
@@ -104,75 +113,104 @@ static inline int
 ff_detect_alpha_full_c(const uint8_t *color, ptrdiff_t color_stride,
                        const uint8_t *alpha, ptrdiff_t alpha_stride,
                        ptrdiff_t width, ptrdiff_t height,
-                       int p, int q, int k)
+                       int alpha_max, int mpeg_range, int offset)
 {
+    uint8_t transparent = 0;
     while (height--) {
-        uint8_t cond = 0;
-        for (int x = 0; x < width; x++)
-            cond |= color[x] > alpha[x];
-        if (cond)
-            return 1;
+        uint8_t straight = 0;
+        for (int x = 0; x < width; x++) {
+            straight  |= color[x] > alpha[x];
+            transparent |= alpha[x] != alpha_max;
+        }
+        if (straight)
+            return FF_ALPHA_STRAIGHT;
         color += color_stride;
         alpha += alpha_stride;
     }
-    return 0;
+    return transparent ? FF_ALPHA_TRANSPARENT : 0;
 }
 
 static inline int
 ff_detect_alpha_limited_c(const uint8_t *color, ptrdiff_t color_stride,
                           const uint8_t *alpha, ptrdiff_t alpha_stride,
                           ptrdiff_t width, ptrdiff_t height,
-                          int p, int q, int k)
+                          int alpha_max, int mpeg_range, int offset)
 {
+    uint8_t transparent = 0;
     while (height--) {
-        uint8_t cond = 0;
-        for (int x = 0; x < width; x++)
-            cond |= p * color[x] - k > q * alpha[x];
-        if (cond)
-            return 1;
+        uint8_t straight = 0;
+        for (int x = 0; x < width; x++) {
+            straight  |= alpha_max * color[x] - offset > mpeg_range * alpha[x];
+            transparent |= alpha[x] != alpha_max;
+        }
+        if (straight)
+            return FF_ALPHA_STRAIGHT;
         color += color_stride;
         alpha += alpha_stride;
     }
-    return 0;
+    return transparent ? FF_ALPHA_TRANSPARENT : 0;
 }
 
 static inline int
 ff_detect_alpha16_full_c(const uint8_t *color, ptrdiff_t color_stride,
                          const uint8_t *alpha, ptrdiff_t alpha_stride,
                          ptrdiff_t width, ptrdiff_t height,
-                         int p, int q, int k)
+                         int alpha_max, int mpeg_range, int offset)
 {
+    uint8_t transparent = 0;
     while (height--) {
         const uint16_t *color16 = (const uint16_t *) color;
         const uint16_t *alpha16 = (const uint16_t *) alpha;
-        uint8_t cond = 0;
-        for (int x = 0; x < width; x++)
-            cond |= color16[x] > alpha16[x];
-        if (cond)
-            return 1;
+        uint8_t straight = 0;
+        for (int x = 0; x < width; x++) {
+            straight  |= color16[x] > alpha16[x];
+            transparent |= alpha16[x] != alpha_max;
+        }
+        if (straight)
+            return FF_ALPHA_STRAIGHT;
         color += color_stride;
         alpha += alpha_stride;
     }
-    return 0;
+    return transparent ? FF_ALPHA_TRANSPARENT : 0;
 }
 
 static inline int
 ff_detect_alpha16_limited_c(const uint8_t *color, ptrdiff_t color_stride,
                             const uint8_t *alpha, ptrdiff_t alpha_stride,
                             ptrdiff_t width, ptrdiff_t height,
-                            int p, int q, int k)
+                            int alpha_max, int mpeg_range, int offset)
 {
+    uint8_t transparent = 0;
     while (height--) {
         const uint16_t *color16 = (const uint16_t *) color;
         const uint16_t *alpha16 = (const uint16_t *) alpha;
         for (int x = 0; x < width; x++) {
-            if ((int64_t) p * color16[x] - k > (int64_t) q * alpha16[x])
-                return 1;
+            if ((int64_t) alpha_max * color16[x] - offset > (int64_t) mpeg_range * alpha16[x])
+                return FF_ALPHA_STRAIGHT;
+            transparent |= alpha16[x] != alpha_max;
         }
         color += color_stride;
         alpha += alpha_stride;
     }
-    return 0;
+    return transparent ? FF_ALPHA_TRANSPARENT : 0;
 }
 
-#endif /* AVFILTER_COLORDETECT_H */
+static av_cold inline void
+ff_color_detect_dsp_init(FFColorDetectDSPContext *dsp, int depth,
+                         enum AVColorRange color_range)
+{
+    dsp->detect_range = depth > 8 ? ff_detect_range16_c : ff_detect_range_c;
+    if (color_range == AVCOL_RANGE_JPEG) {
+        dsp->detect_alpha = depth > 8 ? ff_detect_alpha16_full_c : ff_detect_alpha_full_c;
+    } else {
+        dsp->detect_alpha = depth > 8 ? ff_detect_alpha16_limited_c : ff_detect_alpha_limited_c;
+    }
+
+#if ARCH_AARCH64
+    ff_color_detect_dsp_init_aarch64(dsp, depth, color_range);
+#elif ARCH_X86
+    ff_color_detect_dsp_init_x86(dsp, depth, color_range);
+#endif
+}
+
+#endif /* AVFILTER_COLORDETECTDSP_H */

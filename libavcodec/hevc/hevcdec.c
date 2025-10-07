@@ -45,6 +45,7 @@
 #include "codec_internal.h"
 #include "decode.h"
 #include "golomb.h"
+#include "h274.h"
 #include "hevc.h"
 #include "parse.h"
 #include "hevcdec.h"
@@ -2096,7 +2097,7 @@ static void hls_prediction_unit(HEVCLocalContext *lc,
                                 int log2_cb_size, int partIdx, int idx)
 {
 #define POS(c_idx, x, y)                                                          \
-    &s->cur_frame->f->data[c_idx] ?                                               \
+    s->cur_frame->f->data[c_idx] ?                                                \
     &s->cur_frame->f->data[c_idx][((y) >> sps->vshift[c_idx]) * linesize[c_idx] + \
                            (((x) >> sps->hshift[c_idx]) << sps->pixel_shift)] : NULL
     const HEVCContext *const s = lc->parent;
@@ -3498,8 +3499,7 @@ static int hevc_frame_end(HEVCContext *s, HEVCLayerContext *l)
             av_assert0(0);
             return AVERROR_BUG;
         case AV_FILM_GRAIN_PARAMS_H274:
-            ret = ff_h274_apply_film_grain(out->frame_grain, out->f,
-                                           &s->h274db, fgp);
+            ret = ff_h274_apply_film_grain(out->frame_grain, out->f, fgp);
             break;
         case AV_FILM_GRAIN_PARAMS_AV1:
             ret = ff_aom_apply_film_grain(out->frame_grain, out->f, fgp);
@@ -4189,7 +4189,7 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
     return 0;
 }
 
-static void hevc_decode_flush(AVCodecContext *avctx)
+static av_cold void hevc_decode_flush(AVCodecContext *avctx)
 {
     HEVCContext *s = avctx->priv_data;
     ff_hevc_flush_dpb(s);

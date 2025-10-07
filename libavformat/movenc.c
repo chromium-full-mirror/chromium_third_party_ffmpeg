@@ -5183,7 +5183,11 @@ static int mov_write_moov_tag(AVIOContext *pb, MOVMuxContext *mov,
                 return ret;
         }
     }
-    if (mov->flags & FF_MOV_FLAG_FRAGMENT)
+    /* Don't write mvex for hybrid_fragmented during mov_write_trailer
+     * (mov->moov_written != 0)
+     */
+    if (mov->flags & FF_MOV_FLAG_FRAGMENT &&
+        !(mov->flags & FF_MOV_FLAG_HYBRID_FRAGMENTED && mov->moov_written))
         mov_write_mvex_tag(pb, mov); /* QuickTime requires trak to precede this */
 
     if (mov->mode == MODE_PSP)
@@ -6588,6 +6592,9 @@ static int mov_flush_fragment(AVFormatContext *s, int force)
             mov_write_moof_tag(s->pb, mov, moof_tracks, mdat_size);
             mov->fragments++;
 
+            if (track->cenc.aes_ctr)
+                ff_mov_cenc_flush(&track->cenc);
+
             avio_wb32(s->pb, mdat_size + 8);
             ffio_wfourcc(s->pb, "mdat");
             mdat_start = avio_tell(s->pb);
@@ -7463,6 +7470,14 @@ static int mov_create_chapter_track(AVFormatContext *s, int tracknum)
         return ret;
     memcpy(track->par->extradata, stub_header, sizeof(stub_header));
 
+    if (track->extradata == NULL) {
+        track->stsd_count     = 1;
+        track->extradata      = av_calloc(1, sizeof(*track->extradata));
+        track->extradata_size = av_calloc(1, sizeof(*track->extradata_size));
+        if (!track->extradata || !track->extradata_size)
+            return AVERROR(ENOMEM);
+    }
+
     track->extradata[0] = av_memdup(stub_header, sizeof(stub_header));
     if (!track->extradata[0])
         return AVERROR(ENOMEM);
@@ -8241,15 +8256,6 @@ static int mov_init(AVFormatContext *s)
                    stream copy. */
                 track->squash_fragment_samples_to_one =
                     ff_is_ttml_stream_paragraph_based(track->par);
-
-                if (mov->flags & FF_MOV_FLAG_FRAGMENT &&
-                    track->squash_fragment_samples_to_one) {
-                    av_log(s, AV_LOG_ERROR,
-                           "Fragmentation is not currently supported for "
-                           "TTML in MP4/ISMV (track synchronization between "
-                           "subtitles and other media is not yet implemented)!\n");
-                    return AVERROR_PATCHWELCOME;
-                }
 
                 if (track->mode != MODE_ISM &&
                     track->par->codec_tag == MOV_ISMV_TTML_TAG &&
