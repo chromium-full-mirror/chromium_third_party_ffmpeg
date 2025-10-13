@@ -714,7 +714,7 @@ static VkBool32 VKAPI_CALL vk_dbg_callback(VkDebugUtilsMessageSeverityFlagBitsEX
 
 #define ADD_VAL_TO_LIST(list, count, val)                                      \
     do {                                                                       \
-        list = av_realloc_array(list, ++count, sizeof(*list));                 \
+        list = av_realloc_array(list, sizeof(*list), ++count);                 \
         if (!list) {                                                           \
             err = AVERROR(ENOMEM);                                             \
             goto fail;                                                         \
