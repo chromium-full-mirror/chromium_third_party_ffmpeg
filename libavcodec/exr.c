@@ -196,9 +196,9 @@ typedef struct EXRContext {
     enum AVColorTransferCharacteristic apply_trc_type;
     float gamma;
     uint16_t gamma_table[65536];
-    Float2HalfTables f2h_tables;
 #endif
 
+    Float2HalfTables f2h_tables;
     Half2FloatTables h2f_tables;
 } EXRContext;
 
@@ -992,8 +992,8 @@ static int dwa_uncompress(const EXRContext *s, const uint8_t *src, int compresse
     int64_t version, lo_usize, lo_size;
     int64_t ac_size, dc_size, rle_usize, rle_csize, rle_raw_size;
     int64_t ac_count, dc_count, ac_compression;
-    const int dc_w = td->xsize >> 3;
-    const int dc_h = td->ysize >> 3;
+    const int dc_w = (td->xsize + 7) >> 3;
+    const int dc_h = (td->ysize + 7) >> 3;
     GetByteContext gb, agb;
     int skip, ret;
     int have_rle = 0;
@@ -1004,6 +1004,11 @@ static int dwa_uncompress(const EXRContext *s, const uint8_t *src, int compresse
     version = AV_RL64(src + 0);
     if (version != 2)
         return AVERROR_INVALIDDATA;
+
+    if (s->nb_channels < 3) {
+        avpriv_request_sample(s->avctx, "Gray DWA");
+        return AVERROR_PATCHWELCOME;
+    }
 
     lo_usize = AV_RL64(src + 8);
     lo_size = AV_RL64(src + 16);
@@ -1021,9 +1026,18 @@ static int dwa_uncompress(const EXRContext *s, const uint8_t *src, int compresse
     )
         return AVERROR_INVALIDDATA;
 
+    if (ac_size <= 0) {
+        avpriv_request_sample(s->avctx, "Zero ac_size");
+        return AVERROR_INVALIDDATA;
+    }
+
     if ((uint64_t)rle_raw_size > INT_MAX) {
         avpriv_request_sample(s->avctx, "Too big rle_raw_size");
         return AVERROR_INVALIDDATA;
+    }
+
+    if (td->xsize % 8 || td->ysize % 8) {
+        avpriv_request_sample(s->avctx, "odd dimensions DWA");
     }
 
     bytestream2_init(&gb, src + 88, compressed_size - 88);
@@ -2148,6 +2162,9 @@ static int decode_frame(AVCodecContext *avctx, AVFrame *picture,
         return AVERROR_INVALIDDATA;
     }
 
+    if (s->channel_offsets[3] >= 0)
+        avctx->alpha_mode = AVALPHA_MODE_PREMULTIPLIED;
+
 #if FF_API_EXR_GAMMA
     if (s->apply_trc_type != AVCOL_TRC_UNSPECIFIED)
         avctx->color_trc = s->apply_trc_type;
@@ -2283,9 +2300,9 @@ static av_cold int decode_init(AVCodecContext *avctx)
     union av_intfloat32 t;
     float one_gamma = 1.0f / s->gamma;
     av_csp_trc_function trc_func = NULL;
-    ff_init_float2half_tables(&s->f2h_tables);
 #endif
 
+    ff_init_float2half_tables(&s->f2h_tables);
     ff_init_half2float_tables(&s->h2f_tables);
 
     s->avctx              = avctx;
