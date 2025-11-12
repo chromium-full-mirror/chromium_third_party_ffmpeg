@@ -1130,3 +1130,14 @@ Date:   Thu Feb 20 13:00:16 2025 +0100
 Affects:
     libavcodec/hevc/hevcdec.c
 
+------------------------------------------------------------------
+commit 71b8313894d194fe5ec6b786f118b5b235280e63
+Merge: 9aee02afbe cbc6134a4a
+Author: Jordan Bayles <jophba@chromium.org>
+Date:   Wed Nov 12 01:19:43 2025 +0000
+
+    Merge remote-tracking branch 'upstream/master' into sushi-2025-11-12-01-16-46
+
+Affects:
+    libavcodec/opus/parser.c
+
