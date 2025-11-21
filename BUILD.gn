@@ -180,6 +180,10 @@ config("ffmpeg_warnings") {
 
       # codec_internal.h forward declares some enums.
       "-Wno-microsoft-enum-forward-reference",
+
+      # libavutil/arm/cpu.c now defines some kernel header values without
+      # checking if they are already defined, such as HWCAP_ARM_VFP.
+      "-Wno-macro-redefined",
     ]
 
     if (target_cpu == "arm" || target_cpu == "arm64" ||
