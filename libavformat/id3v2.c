@@ -361,7 +361,7 @@ static void read_ttag(AVFormatContext *s, AVIOContext *pb, int taglen,
             return;
         }
         dict_flags |= AV_DICT_DONT_STRDUP_KEY;
-    } else if (!*dst)
+    } else if (dst && !*dst)
         av_freep(&dst);
 
     if (dst)

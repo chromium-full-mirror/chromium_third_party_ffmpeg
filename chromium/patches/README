@@ -1141,3 +1141,21 @@ Date:   Wed Nov 12 01:19:43 2025 +0000
 Affects:
     libavcodec/opus/parser.c
 
+------------------------------------------------------------------
+commit 217460bc58366eba2236783ba6d1a1695fd27759
+Author: Jordan Bayles <jophba@chromium.org>
+Date:   Thu Dec 4 19:41:34 2025 +0000
+
+    [Fuzzer] Fix crash in read_ttag method
+
+    This patch is a minimally scoped fix for a crash in read_ttag
+    where this function doesn't properly handle the check to ensure
+    that the output parameter of a call to decode_str is properly not
+    `NULL` and not `NUL`, and only checks that it is not `NUL`, which
+    causes an AV since it is actually `NULL` instead.
+
+    A more comprehensive fix should be explored upstream, but this patch is
+    minimally scoped to avoid merge issues. E.g. see:
+    https://chromium-review.googlesource.com/c/chromium/third_party/ffmpeg/+/7226199
+
+    Bug: 463499108
