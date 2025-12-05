@@ -1142,9 +1142,9 @@ Affects:
     libavcodec/opus/parser.c
 
 ------------------------------------------------------------------
-commit 217460bc58366eba2236783ba6d1a1695fd27759
+commit 8797aa93d37a0ef0653dfc2069ea001dfe0595da
 Author: Jordan Bayles <jophba@chromium.org>
-Date:   Thu Dec 4 19:41:34 2025 +0000
+Date:   Thu Dec 4 19:44:53 2025 +0000
 
     [Fuzzer] Fix crash in read_ttag method
 
@@ -1159,3 +1159,31 @@ Date:   Thu Dec 4 19:41:34 2025 +0000
     https://chromium-review.googlesource.com/c/chromium/third_party/ffmpeg/+/7226199
 
     Bug: 463499108
+    Change-Id: Ied148d0b3ecacf8b002f511002cfe9955b83cb81
+    Reviewed-on: https://chromium-review.googlesource.com/c/chromium/third_party/ffmpeg/+/7227506
+    Reviewed-by: Syed AbuTalib <lowkey@google.com>
+    Reviewed-by: Ted (Chromium) Meyer <tmathmeyer@chromium.org>
+
+Affects:
+    libavformat/id3v2.c
+
+------------------------------------------------------------------
+commit 47d00322c27f474c45f016bf08a7d26195072e58
+Author: Jordan Bayles <jophba@chromium.org>
+Date:   Fri Dec 5 22:49:16 2025 +0000
+
+    Revert "lavf/id3v2: allow empty strings without bom, fixes #20597"
+
+    This reverts commit 1025beeef1d7a46340378f7297ae1399f12d9b99.
+
+    This commit changes the decode_str() to now return 0 (success) while
+    also setting the `dst` string to `NULL`, which the 12 calling sites
+    are not designed to be able to handle (they very reasonably expect
+    that if they get a successful error code, there is a string, even if
+    it is empty).
+
+    Bug: 466414832
+
+Affects:
+    libavformat/id3v2.c
+
