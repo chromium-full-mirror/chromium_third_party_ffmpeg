@@ -215,6 +215,9 @@ static const struct {
     #if CONFIG_ME_CMP
         { "motion", checkasm_check_motion },
     #endif
+    #if CONFIG_MPEGVIDEO
+        { "mpegvideo_unquantize", checkasm_check_mpegvideo_unquantize },
+    #endif
     #if CONFIG_MPEGVIDEOENCDSP
         { "mpegvideoencdsp", checkasm_check_mpegvideoencdsp },
     #endif
@@ -254,11 +257,18 @@ static const struct {
     #if CONFIG_VP3DSP
         { "vp3dsp", checkasm_check_vp3dsp },
     #endif
+    #if CONFIG_VP6_DECODER
+        { "vp6dsp", checkasm_check_vp6dsp },
+    #endif
     #if CONFIG_VP8DSP
         { "vp8dsp", checkasm_check_vp8dsp },
     #endif
     #if CONFIG_VP9_DECODER
-        { "vp9dsp", checkasm_check_vp9dsp },
+        { "vp9dsp", checkasm_check_vp9dsp }, // all of the below
+        { "vp9_ipred", checkasm_check_vp9_ipred },
+        { "vp9_itxfm", checkasm_check_vp9_itxfm },
+        { "vp9_loopfilter", checkasm_check_vp9_loopfilter },
+        { "vp9_mc", checkasm_check_vp9_mc },
     #endif
     #if CONFIG_VIDEODSP
         { "videodsp", checkasm_check_videodsp },
@@ -297,6 +307,9 @@ static const struct {
     #if CONFIG_EQ_FILTER
         { "vf_eq", checkasm_check_vf_eq },
     #endif
+    #if CONFIG_FSPP_FILTER
+        { "vf_fspp", checkasm_check_vf_fspp },
+    #endif
     #if CONFIG_GBLUR_FILTER
         { "vf_gblur", checkasm_check_vf_gblur },
     #endif
@@ -321,6 +334,7 @@ static const struct {
     { "sw_range_convert", checkasm_check_sw_range_convert },
     { "sw_rgb", checkasm_check_sw_rgb },
     { "sw_scale", checkasm_check_sw_scale },
+    { "sw_xyz2rgb", checkasm_check_sw_xyz2rgb },
     { "sw_yuv2rgb", checkasm_check_sw_yuv2rgb },
     { "sw_yuv2yuv", checkasm_check_sw_yuv2yuv },
     { "sw_ops", checkasm_check_sw_ops },
@@ -376,8 +390,6 @@ static const struct {
 #elif ARCH_X86
     { "MMX",        "mmx",       AV_CPU_FLAG_MMX|AV_CPU_FLAG_CMOV },
     { "MMXEXT",     "mmxext",    AV_CPU_FLAG_MMXEXT },
-    { "3DNOW",      "3dnow",     AV_CPU_FLAG_3DNOW },
-    { "3DNOWEXT",   "3dnowext",  AV_CPU_FLAG_3DNOWEXT },
     { "SSE",        "sse",       AV_CPU_FLAG_SSE },
     { "SSE2",       "sse2",      AV_CPU_FLAG_SSE2|AV_CPU_FLAG_SSE2SLOW },
     { "SSE3",       "sse3",      AV_CPU_FLAG_SSE3|AV_CPU_FLAG_SSE3SLOW },
