@@ -6,7 +6,7 @@
 #define CONFIG_THIS_YEAR 2025
 #define FFMPEG_DATADIR "/usr/local/share/ffmpeg"
 #define AVCONV_DATADIR "/usr/local/share/ffmpeg"
-#define CC_IDENT "clang version 22.0.0git (https://chromium.googlesource.com/a/external/github.com/llvm/llvm-project 8a5f15330feb693bc2c3923c0e77ce808382491f)"
+#define CC_IDENT "clang version 22.0.0git (https://chromium.googlesource.com/a/external/github.com/llvm/llvm-project efe9a8c95451c9dadb5dd522802b05afd8b52d1b)"
 #define OS_NAME android
 #define EXTERN_PREFIX ""
 #define EXTERN_ASM 
@@ -490,7 +490,6 @@
 #define CONFIG_DECKLINK 0
 #define CONFIG_LIBFDK_AAC 0
 #define CONFIG_LIBMPEGHDEC 0
-#define CONFIG_LIBTLS 0
 #define CONFIG_GMP 0
 #define CONFIG_LIBARIBB24 0
 #define CONFIG_LIBLENSFUN 0
@@ -564,6 +563,7 @@
 #define CONFIG_LIBTENSORFLOW 0
 #define CONFIG_LIBTESSERACT 0
 #define CONFIG_LIBTHEORA 0
+#define CONFIG_LIBTLS 0
 #define CONFIG_LIBTORCH 0
 #define CONFIG_LIBTWOLAME 0
 #define CONFIG_LIBUAVS3D 0
@@ -712,6 +712,7 @@
 #define CONFIG_CBS_VP8 0
 #define CONFIG_CBS_VP9 0
 #define CONFIG_CELP_MATH 0
+#define CONFIG_D3D12_INTRA_REFRESH 0
 #define CONFIG_D3D12VA_ENCODE 0
 #define CONFIG_DEFLATE_WRAPPER 0
 #define CONFIG_DIRAC_PARSE 1
@@ -798,7 +799,6 @@
 #define CONFIG_VC1DSP 0
 #define CONFIG_VIDEODSP 0
 #define CONFIG_VP3DSP 0
-#define CONFIG_VP56DSP 0
 #define CONFIG_VP8DSP 0
 #define CONFIG_VULKAN_ENCODE 0
 #define CONFIG_VVC_SEI 0

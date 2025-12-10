@@ -1168,9 +1168,9 @@ Affects:
     libavformat/id3v2.c
 
 ------------------------------------------------------------------
-commit 47d00322c27f474c45f016bf08a7d26195072e58
+commit 8055e9656f18648bd37d35678ad00668976f4afa
 Author: Jordan Bayles <jophba@chromium.org>
-Date:   Fri Dec 5 22:49:16 2025 +0000
+Date:   Fri Dec 5 23:00:46 2025 +0000
 
     Revert "lavf/id3v2: allow empty strings without bom, fixes #20597"
 
@@ -1183,6 +1183,10 @@ Date:   Fri Dec 5 22:49:16 2025 +0000
     it is empty).
 
     Bug: 466414832
+    Change-Id: Idcbeade588250df846f6378d362e1e278ad25471
+    Reviewed-on: https://chromium-review.googlesource.com/c/chromium/third_party/ffmpeg/+/7234435
+    Reviewed-by: Ted (Chromium) Meyer <tmathmeyer@chromium.org>
+    Reviewed-by: Syed AbuTalib <lowkey@google.com>
 
 Affects:
     libavformat/id3v2.c
