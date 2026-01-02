@@ -119,6 +119,8 @@ static int ogg_save(AVFormatContext *s)
             ret = AVERROR(ENOMEM);
         os->new_metadata      = NULL;
         os->new_metadata_size = 0;
+        os->new_extradata      = NULL;
+        os->new_extradata_size = 0;
     }
 
     ogg->state = ost;
@@ -145,6 +147,7 @@ static int ogg_restore(AVFormatContext *s)
             struct ogg_stream *stream = &ogg->streams[i];
             av_freep(&stream->buf);
             av_freep(&stream->new_metadata);
+            av_freep(&stream->new_extradata);
 
             if (i >= ost->nstreams || !ost->streams[i].private) {
                 free_stream(s, i);
@@ -195,6 +198,8 @@ static int ogg_reset(AVFormatContext *s)
         os->end_trimming = 0;
         av_freep(&os->new_metadata);
         os->new_metadata_size = 0;
+        av_freep(&os->new_extradata);
+        os->new_extradata_size = 0;
     }
 
     ogg->page_pos = -1;
@@ -252,6 +257,10 @@ static int ogg_replace_stream(AVFormatContext *s, uint32_t serial, char *magic, 
     os->flags   = 0;
     os->start_trimming = 0;
     os->end_trimming = 0;
+    av_freep(&os->new_metadata);
+    os->new_metadata_size = 0;
+    av_freep(&os->new_extradata);
+    os->new_extradata_size = 0;
     os->replace = 1;
 
     return i;
