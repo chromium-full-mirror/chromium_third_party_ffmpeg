@@ -1,2 +1,2 @@
 ; Automatically generated on Mon Jan  5 23:21:20 2026. See crbug.com/495833.
-%include "../../third_party/ffmpeg/libavcodec/x86/sbrdsp.asm"
+%include "../../third_party/ffmpeg/libavutil/x86/crc.asm"
