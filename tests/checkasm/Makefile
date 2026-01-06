@@ -16,7 +16,7 @@ AVCODECOBJS-$(CONFIG_HPELDSP)           += hpeldsp.o
 AVCODECOBJS-$(CONFIG_IDCTDSP)           += idctdsp.o
 AVCODECOBJS-$(CONFIG_LLAUDDSP)          += llauddsp.o
 AVCODECOBJS-$(CONFIG_LLVIDDSP)          += llviddsp.o
-AVCODECOBJS-$(CONFIG_LLVIDENCDSP)       += llviddspenc.o
+AVCODECOBJS-$(CONFIG_LLVIDENCDSP)       += llvidencdsp.o
 AVCODECOBJS-$(CONFIG_LPC)               += lpc.o
 AVCODECOBJS-$(CONFIG_ME_CMP)            += motion.o
 AVCODECOBJS-$(CONFIG_MPEGVIDEO)         += mpegvideo_unquantize.o
@@ -91,6 +91,7 @@ CHECKASMOBJS-$(CONFIG_SWSCALE)  += $(SWSCALEOBJS)
 # libavutil tests
 AVUTILOBJS                              += aes.o
 AVUTILOBJS                              += av_tx.o
+AVUTILOBJS                              += crc.o
 AVUTILOBJS                              += fixed_dsp.o
 AVUTILOBJS                              += float_dsp.o
 AVUTILOBJS                              += lls.o
