@@ -1,4 +1,4 @@
-# Copyright 2025 The Chromium Authors
+# Copyright 2026 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -21,6 +21,7 @@ use_linux_config = is_linux || is_chromeos || is_fuchsia
 ffmpeg_asm_deps += [
   "libavcodec/x86/sbrdsp.asm",
   "libavcodec/x86/videodsp.asm",
+  "libavutil/x86/crc.asm",
 ]
 ffmpeg_c_deps += [
   "libavcodec/aarch64/aacpsdsp_neon.S",
@@ -57,6 +58,7 @@ ffmpeg_c_deps += [
   "libavutil/aes.c",
   "libavutil/arm/cpu.c",
   "libavutil/cpu.c",
+  "libavutil/crc.c",
   "libavutil/fixed_dsp.c",
   "libavutil/float_dsp.c",
   "libavutil/imgutils.c",
@@ -159,9 +161,11 @@ if (current_cpu == "arm64" || current_cpu == "arm64e" || current_cpu == "x64" ||
     "libavformat/autorename_libavformat_pcm.c",
     "libavformat/autorename_libavformat_utils.c",
     "libavformat/autorename_libavformat_version.c",
+    "libavformat/av1.c",
     "libavformat/avformat.c",
     "libavformat/avio.c",
     "libavformat/aviobuf.c",
+    "libavformat/codecstring.c",
     "libavformat/demux.c",
     "libavformat/demux_utils.c",
     "libavformat/dovi_isom.c",
@@ -183,6 +187,7 @@ if (current_cpu == "arm64" || current_cpu == "arm64e" || current_cpu == "x64" ||
     "libavformat/mp3dec.c",
     "libavformat/mux.c",
     "libavformat/mux_utils.c",
+    "libavformat/nal.c",
     "libavformat/oggdec.c",
     "libavformat/oggparseflac.c",
     "libavformat/oggparseogm.c",
@@ -203,11 +208,13 @@ if (current_cpu == "arm64" || current_cpu == "arm64e" || current_cpu == "x64" ||
     "libavformat/url.c",
     "libavformat/urldecode.c",
     "libavformat/vorbiscomment.c",
+    "libavformat/vpcc.c",
     "libavformat/wavdec.c",
     "libavutil/aes_ctr.c",
     "libavutil/ambient_viewing_environment.c",
     "libavutil/autorename_libavutil_aes.c",
     "libavutil/autorename_libavutil_cpu.c",
+    "libavutil/autorename_libavutil_crc.c",
     "libavutil/autorename_libavutil_fixed_dsp.c",
     "libavutil/autorename_libavutil_float_dsp.c",
     "libavutil/autorename_libavutil_imgutils.c",
@@ -221,7 +228,6 @@ if (current_cpu == "arm64" || current_cpu == "arm64e" || current_cpu == "x64" ||
     "libavutil/camellia.c",
     "libavutil/channel_layout.c",
     "libavutil/container_fifo.c",
-    "libavutil/crc.c",
     "libavutil/csp.c",
     "libavutil/detection_bbox.c",
     "libavutil/dict.c",
@@ -406,6 +412,7 @@ if (current_cpu == "x64" || (is_win && current_cpu == "x86") ||
     "libavcodec/x86/imdct36.asm",
     "libavcodec/x86/vorbisdsp.asm",
     "libavutil/x86/aes.asm",
+    "libavutil/x86/autorename_libavutil_x86_crc.asm",
     "libavutil/x86/cpuid.asm",
     "libavutil/x86/fixed_dsp.asm",
     "libavutil/x86/float_dsp.asm",
@@ -495,7 +502,9 @@ if (current_cpu == "arm64" || current_cpu == "arm64e") {
     "libavcodec/aarch64/autorename_libavcodec_aarch64_vorbisdsp_neon.S",
     "libavcodec/aarch64/mpegaudiodsp_neon.S",
     "libavutil/aarch64/autorename_libavutil_aarch64_float_dsp_neon.S",
+    "libavutil/aarch64/cpu_sme.S",
     "libavutil/aarch64/cpu_sve.S",
+    "libavutil/aarch64/crc.S",
     "libavutil/aarch64/tx_float_neon.S",
   ]
 }
