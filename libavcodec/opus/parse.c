@@ -38,7 +38,6 @@
 #include "opus.h"
 #include "parse.h"
 #include "tab.h"
-#include "vorbis_data.h"
 
 /**
  * Read a 1- or 2-byte frame length
