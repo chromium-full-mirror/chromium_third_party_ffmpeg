@@ -132,6 +132,7 @@ if (current_cpu == "arm64" || current_cpu == "arm64e" || current_cpu == "x64" ||
     "libavcodec/mpegaudiodsp_float.c",
     "libavcodec/mpegaudiotabs.c",
     "libavcodec/options.c",
+    "libavcodec/opus/frame_duration_tab.c",
     "libavcodec/opus/parse.c",
     "libavcodec/opus/parser.c",
     "libavcodec/packet.c",
