@@ -8,7 +8,7 @@ Shipped: yes
 Security Critical: yes
 Update Mechanism: Manual
 Upstream Git: git://source.ffmpeg.org/ffmpeg.git
-Last Upstream Merge: 9ee6136ece2077369f8bd91ba7bf79bbe0c35739, Feb 09 2026
+Last Upstream Merge: ac4d50cb26225aa1890f12a80af0968d8eac26d5, Mar 16 2026
 This file documents the layout of the Chromium copy of FFmpeg.
 See //media/ffmpeg/README for help with common tasks relating to this code.
 
