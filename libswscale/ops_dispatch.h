@@ -54,8 +54,8 @@ typedef struct SwsOpExec {
     /* Extra metadata, may or may not be useful */
     int32_t width, height;      /* Overall output image dimensions */
     int32_t slice_y, slice_h;   /* Start and height of current slice */
-    int32_t block_size_in;      /* Size of a block of pixels in bytes */
-    int32_t block_size_out;
+    int32_t block_size_in[4];   /* Size of a block of pixels in bytes */
+    int32_t block_size_out[4];
 
     /* Subsampling factors for each plane */
     uint8_t in_sub_y[4], out_sub_y[4];
@@ -81,7 +81,7 @@ typedef struct SwsOpExec {
 } SwsOpExec;
 
 static_assert(sizeof(SwsOpExec) == 24 * sizeof(void *) +
-                                   6  * sizeof(int32_t) +
+                                   12 * sizeof(int32_t) +
                                    16 * sizeof(uint8_t) +
                                    2  * sizeof(void *),
               "SwsOpExec layout mismatch");
@@ -111,14 +111,17 @@ typedef struct SwsCompiledOp {
      */
     bool opaque;
 
+    /* Set by ff_sws_ops_compile(), informative */
+    const struct SwsOpBackend *backend;
+
     /* Execution parameters for all functions */
     int slice_align; /* slice height alignment */
     int cpu_flags;   /* active set of CPU flags (informative) */
 
     /* Execution parameters for non-opaque functions only */
-    int block_size;  /* number of pixels processed per iteration */
-    int over_read;   /* implementation over-reads input by this many bytes */
-    int over_write;  /* implementation over-writes output by this many bytes */
+    int block_size;     /* number of pixels processed per iteration */
+    int over_read[4];   /* implementation over-reads input by this many bytes */
+    int over_write[4];  /* implementation over-writes output by this many bytes */
 
     /* Arbitrary private data */
     void *priv;
@@ -129,6 +132,7 @@ void ff_sws_compiled_op_unref(SwsCompiledOp *comp);
 
 typedef struct SwsOpBackend {
     const char *name; /* Descriptive name for this backend */
+    SwsBackend flags; /* Set of SWS_BACKEND_* */
 
     /**
      * Compile an operation list to an implementation chain. May modify `ops`
@@ -136,7 +140,7 @@ typedef struct SwsOpBackend {
      *
      * Returns 0 or a negative error code.
      */
-    int (*compile)(SwsContext *ctx, SwsOpList *ops, SwsCompiledOp *out);
+    int (*compile)(SwsContext *ctx, const SwsOpList *ops, SwsCompiledOp *out);
 
     /**
      * If NONE, backend only supports software frames.
@@ -158,18 +162,27 @@ extern const SwsOpBackend *const ff_sws_op_backends[];
 int ff_sws_ops_compile(SwsContext *ctx, const SwsOpBackend *backend,
                        const SwsOpList *ops, SwsCompiledOp *out);
 
+enum SwsOpCompileFlags {
+    /* Automatically optimize the operations when compiling */
+    SWS_OP_FLAG_OPTIMIZE = 1 << 0,
+
+    /* Discard the compiled op lists instead of generating passes */
+    SWS_OP_FLAG_DRY_RUN = 1 << 1,
+
+    /* Split off copied/cleared planes into separate subpasses */
+    SWS_OP_FLAG_SPLIT_MEMCPY = 1 << 2,
+};
+
 /**
- * Resolves an operation list to a graph pass. The first and last operations
- * must be a read/write respectively.
+ * Resolves an operation list to a graph pass. The last op must be a write.
  *
  * @param backend Force the use of a specific backend (Optional)
  * @param ops Operations to compile. Ownership passes to this function, and
  *            will be set to NULL, even on failure.
  * @param flags Set of SwsOpCompileFlags
  * @param input The input for the compiled passes. (Optional)
- * @param output The resulting final output pass will be stored here. If NULL,
- *               no output passes are created, and any compiled functions are
- *               instead immediately freed.
+ * @param output The resulting final output pass will be stored here.
+ *               Optional if using SWS_OP_FLAG_DRY_RUN.
  */
 int ff_sws_compile_pass(SwsGraph *graph, const SwsOpBackend *backend,
                         SwsOpList **ops, int flags, SwsPass *input,
