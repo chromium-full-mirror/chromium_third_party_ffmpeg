@@ -97,6 +97,10 @@ void ff_sws_uop_name(const SwsUOp *op, char buf[SWS_UOP_NAME_MAX])
     case SWS_UOP_READ_PLANAR_FV_FMA:
         av_bprintf(&bp, "_%s", ff_sws_pixel_type_name(par->filter.type));
         break;
+    case SWS_UOP_RW_SHUFFLE:
+        av_bprintf(&bp, "_%x_%u_%u", par->shuffle.clear_value,
+                   par->shuffle.read_size, par->shuffle.write_size);
+        break;
     case SWS_UOP_LSHIFT:
     case SWS_UOP_RSHIFT:
         av_bprintf(&bp, "_%u", par->shift.amount);
@@ -155,6 +159,9 @@ void ff_sws_uop_name(const SwsUOp *op, char buf[SWS_UOP_NAME_MAX])
         const unsigned size = 1u << par->dither.size_log2;
         av_bprintf(&bp, "_%ux%u", size, size);
         break;
+    case SWS_UOP_LUT_3D:
+        av_bprintf(&bp, "_%s", par->lut3d.dynamic ? "dynamic" : "static");
+        break;
     }
 
     av_assert0(av_bprint_is_complete(&bp));
@@ -170,6 +177,9 @@ static void uop_uninit(SwsUOp *uop)
     case SWS_UOP_READ_PLANAR_FV:
     case SWS_UOP_READ_PLANAR_FV_FMA:
         av_refstruct_unref(&uop->data.kernel);
+        break;
+    case SWS_UOP_LUT_3D:
+        av_refstruct_unref(&uop->data.lut3d);
         break;
     }
 
@@ -206,6 +216,17 @@ int ff_sws_uop_list_append(SwsUOpList *uops, SwsUOp *uop)
 
     *uop = (SwsUOp) {0};
     return 0;
+}
+
+void ff_sws_uop_list_remove_at(SwsUOpList *uops, int index, int count)
+{
+    const int end = uops->num_ops - count;
+    av_assert2(index >= 0 && count >= 0 && index + count <= uops->num_ops);
+    for (int i = 0; i < count; i++)
+        uop_uninit(&uops->ops[index + i]);
+    for (int i = index; i < end; i++)
+        uops->ops[i] = uops->ops[i + count];
+    uops->num_ops = end;
 }
 
 int ff_sws_dither_height(const SwsDitherUOp *dither)
@@ -491,11 +512,12 @@ static int translate_linear_op(SwsContext *ctx, SwsUOpList *ops,
         .uop  = SWS_UOP_LINEAR,
     };
 
+    const uint32_t mask = ff_sws_linear_mask(&op->lin);
     const bool bitexact = ctx->flags & SWS_BITEXACT;
     uint32_t exact = 0;
 
     for (int i = 0; i < 4; i++) {
-        if (!SWS_OP_NEEDED(op, i) || !(op->lin.mask & SWS_MASK_ROW(i))) {
+        if (!SWS_OP_NEEDED(op, i) || !(mask & SWS_MASK_ROW(i))) {
             uop.par.lin.zero |= SWS_MASK_ROW(i);
             continue;
         }
@@ -593,7 +615,8 @@ static int translate_op(SwsContext *ctx, SwsUOpList *uops, SwsUOpFlags flags,
         uop.mask = 0;
         for (int i = 0; i < 4 && op->pack.pattern[i]; i++) {
             uop.par.pack.pattern[i] = op->pack.pattern[i];
-            uop.mask |= SWS_COMP(i);
+            if (op->op == SWS_OP_PACK || SWS_OP_NEEDED(op, i))
+                uop.mask |= SWS_COMP(i);
         }
         break;
     case SWS_OP_LSHIFT:
@@ -638,6 +661,11 @@ static int translate_op(SwsContext *ctx, SwsUOpList *uops, SwsUOpFlags flags,
         uop.uop = SWS_UOP_SWAP_BYTES;
         uop.type = pixel_type_to_int(op->type);
         break;
+    case SWS_OP_LUT_3D:
+        uop.uop = SWS_UOP_LUT_3D;
+        uop.par.lut3d.dynamic = op->lut3d.dynamic;
+        uop.data.lut3d = av_refstruct_ref_c(op->lut3d.lut);
+        break;
     default:
         return AVERROR(ENOTSUP);
     }
@@ -661,5 +689,6 @@ int ff_sws_ops_translate(SwsContext *ctx, const SwsOpList *ops,
             return ret;
         input = ops->ops[i].comps;
     }
-    return 0;
+
+    return ff_sws_uop_list_optimize(ctx, flags, uops);
 }
