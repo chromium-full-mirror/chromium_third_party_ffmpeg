@@ -406,8 +406,8 @@
 %define HAVE_SYMVER_ASM_LABEL 1
 %define HAVE_SYMVER_GNU_ASM 0
 %define HAVE_VFP_ARGS 0
-%define HAVE_X86_6REGS 0 ; forced to 0 to avoid inline asm register exhaustion
-%define HAVE_X86_7REGS 0 ; forced to 0 to avoid inline asm register exhaustion
+%define HAVE_X86_6REGS 0 ; %define HAVE_X86_6REGS 1 -- forced to 0 to avoid inline asm register exhaustion
+%define HAVE_X86_7REGS 0 ; %define HAVE_X86_7REGS 1 -- forced to 0 to avoid inline asm register exhaustion
 %define HAVE_XFORM_ASM 0
 %define HAVE_XMM_CLOBBERS 1
 %define HAVE_DPI_AWARENESS_CONTEXT 1
