@@ -311,6 +311,10 @@ target(link_target_type, "ffmpeg_internal") {
   # Windows builds can't compile without EBP because we can't omit frame
   # pointers like we do on posix.
   if (current_cpu == "x86") {
+    defines += [
+      "HAVE_X86_6REGS=0",
+      "HAVE_X86_7REGS=0",
+    ]
     if (using_sanitizer || is_win || use_lld || use_mold) {
       defines += [ "HAVE_EBP_AVAILABLE=0" ]
     } else {
