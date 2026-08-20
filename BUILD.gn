@@ -200,6 +200,15 @@ config("ffmpeg_warnings") {
   }
 }
 
+# Always set the small code model to avoid global flags setting a different
+# model that isn't compatible with the ffmpeg's handwritten assembly code.
+# Use a config to set this so that it isn't overwritten by a global model flag.
+config("ffmpeg_small_cmodel") {
+  if (current_cpu == "x64" && (!is_win || is_clang)) {
+    cflags = [ "-mcmodel=small" ]
+  }
+}
+
 buildflag_header("ffmpeg_features") {
   header = "ffmpeg_features.h"
   flags = [ "USE_SYSTEM_FFMPEG=false" ]
@@ -283,6 +292,7 @@ target(link_target_type, "ffmpeg_internal") {
     # correctly.
     "//build/config/compiler:no_incompatible_pointer_warnings",
     ":ffmpeg_warnings",
+    ":ffmpeg_small_cmodel",
   ]
 
   # Since we are not often debugging FFmpeg, and performance is
