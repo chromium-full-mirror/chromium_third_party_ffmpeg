@@ -615,6 +615,13 @@ static int get_pixel_format(AVCodecContext *avctx)
 #endif
         break;
     case AV_PIX_FMT_YUV420P12:
+#if CONFIG_AV1_D3D11VA_HWACCEL
+        *fmtp++ = AV_PIX_FMT_D3D11VA_VLD;
+        *fmtp++ = AV_PIX_FMT_D3D11;
+#endif
+#if CONFIG_AV1_D3D12VA_HWACCEL
+        *fmtp++ = AV_PIX_FMT_D3D12;
+#endif
 #if CONFIG_AV1_VULKAN_HWACCEL
         *fmtp++ = AV_PIX_FMT_VULKAN;
 #endif
@@ -701,8 +708,8 @@ static int get_pixel_format(AVCodecContext *avctx)
 
 static void av1_frame_unref(AV1Frame *f)
 {
-    ff_progress_frame_unref(&f->pf);
     av_refstruct_unref(&f->hwaccel_picture_private);
+    ff_progress_frame_unref(&f->pf);
     av_refstruct_unref(&f->header_ref);
     f->raw_frame_header = NULL;
     f->spatial_id = f->temporal_id = 0;
