@@ -6225,7 +6225,7 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     int64_t dts, pts = AV_NOPTS_VALUE;
     int data_offset = 0;
     unsigned entries, first_sample_flags = frag->flags;
-    int flags, distance, i;
+    int flags, distance, i, err = 0;
     int64_t prev_dts = AV_NOPTS_VALUE;
     int next_frag_index = -1, index_entry_pos;
     size_t requested_size;
@@ -6479,10 +6479,11 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
                 "size %u, distance %d, keyframe %d\n", st->index,
                 index_entry_pos, offset, dts, sample_size, distance, keyframe);
         distance++;
-        if (av_sat_add64(dts, sample_duration) != dts + (uint64_t)sample_duration)
-            return AVERROR_INVALIDDATA;
-        if (!sample_size)
-            return AVERROR_INVALIDDATA;
+        if (!sample_size || av_sat_add64(dts, sample_duration) != dts + (uint64_t)sample_duration) {
+            err = AVERROR_INVALIDDATA;
+            i++;
+            break;
+        }
         dts += sample_duration;
         offset += sample_size;
         sc->data_size += sample_size;
@@ -6497,8 +6498,9 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     if (frag_stream_info)
         frag_stream_info->next_trun_dts = dts + sc->time_offset;
     if (i < entries) {
-        // EOF found before reading all entries.  Fix the hole this would
-        // leave in index_entries and tts_data
+        // Either EOF was encountered, or an error occurred in the above loop.
+        // The hole this would leave in index_entries and tts_data must be
+        // fixed.
         int gap = entries - i;
         memmove(sti->index_entries + index_entry_pos,
                 sti->index_entries + index_entry_pos + gap,
@@ -6534,6 +6536,9 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     // be incremented by the number of entries inserted.
     fix_frag_index_entries(&c->frag_index, next_frag_index,
                            frag->track_id, entries);
+
+    if (err < 0)
+        return err;
 
     if (pb->eof_reached) {
         av_log(c->fc, AV_LOG_WARNING, "reached eof, corrupted TRUN atom\n");
