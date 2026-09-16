@@ -1335,8 +1335,19 @@ static int h264_select_output_frame(H264Context *h)
         cur->mmco_reset = 1;
     } else if(h->avctx->has_b_frames < out_of_order && !sps->bitstream_restriction_flag){
         int loglevel = h->avctx->frame_num > 1 ? AV_LOG_WARNING : AV_LOG_VERBOSE;
+        // Chromium: When VUI bitstream_restriction is absent, use the inferred
+        // sps->num_reorder_frames (clamped to sps->ref_frame_count) as soon as
+        // out-of-order frames are detected to avoid dropping initial B-frames.
+        // Upstream didn't want to accept this patch unfortunately; see
+        // https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/22630,
+        // https://crbug.com/495269752, and https://crbug.com/559001366.
+#if 0
         av_log(h->avctx, loglevel, "Increasing reorder buffer to %d\n", out_of_order);
         h->avctx->has_b_frames = out_of_order;
+#else
+        h->avctx->has_b_frames = FFMAX(out_of_order, FFMIN(sps->num_reorder_frames, sps->ref_frame_count));
+        av_log(h->avctx, loglevel, "Increasing reorder buffer to %d\n", h->avctx->has_b_frames);
+#endif
     }
 
     pics = 0;
