@@ -416,14 +416,6 @@ target(link_target_type, "ffmpeg_internal") {
       "HAVE_AV_CONFIG_H",
     ]
 
-    if (is_component_ffmpeg) {
-      # Required to avoid 4049 and 4217 errors around redundant imports.
-      cflags += [
-        "/FIcompat/msvcrt/snprintf.h",
-        "/FIcompat/msvcrt/strtod.h",
-      ]
-    }
-
     # TODO(dalecurtis): We should fix these.  http://crbug.com/154421
     cflags += [
       "/wd4996",  # 'function': was declared deprecated
