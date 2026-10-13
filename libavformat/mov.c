@@ -6295,6 +6295,11 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     if (entries && !frag->size && !(flags & MOV_TRUN_SAMPLE_SIZE))
         return AVERROR_INVALIDDATA;
 
+    // A malformed file can declare more tts entries in the track header than
+    // sample index entries were built. Clamp tts_count so we don't move past
+    // the allocated tts_data buffer when making room for fragment entries.
+    sc->tts_count = FFMIN(sc->tts_count, sti->nb_index_entries);
+
     if ((uint64_t)entries+sc->tts_count >= UINT_MAX/sizeof(*sc->tts_data))
         return AVERROR_INVALIDDATA;
     if (flags & MOV_TRUN_DATA_OFFSET)        data_offset        = avio_rb32(pb);
@@ -6416,9 +6421,10 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
                 sizeof(*sti->index_entries) *
                 (sti->nb_index_entries - index_entry_pos));
         if (sc->tts_count >= index_entry_pos) {
+            unsigned int tts_to_move = FFMIN(sc->tts_count, sti->nb_index_entries) - index_entry_pos;
             memmove(sc->tts_data + index_entry_pos + entries,
                     sc->tts_data + index_entry_pos,
-                    sizeof(*sc->tts_data) * (sc->tts_count - index_entry_pos));
+                    sizeof(*sc->tts_data) * tts_to_move);
         }
         if (index_entry_pos < sc->current_sample) {
             sc->current_sample += entries;
