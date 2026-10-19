@@ -244,13 +244,16 @@ static void test_hf_apply_noise(const SBRDSPContext *sbrdsp)
     for (i = 0; i < 4; i++) {
         if (check_func(sbrdsp->hf_apply_noise[i], "hf_apply_noise_%d", i)) {
             for (j = 0; j < 2; j++) {
-                memcpy(dst0, ref, 128 * 2 * sizeof(INTFLOAT));
-                memcpy(dst1, ref, 128 * 2 * sizeof(INTFLOAT));
-                call_ref(dst0, s_m, q_filt, noise, j, 128);
-                call_new(dst1, s_m, q_filt, noise, j, 128);
-                if (!float_near_abs_eps_array((INTFLOAT *)dst0, (INTFLOAT *)dst1, EPS, 128 * 2))
-                    fail();
-                bench_new(dst1, s_m, q_filt, noise, j, 128);
+                for (int m_max = 125; m_max <= 128; m_max++) {
+                    memcpy(dst0, ref, 128 * 2 * sizeof(INTFLOAT));
+                    memcpy(dst1, ref, 128 * 2 * sizeof(INTFLOAT));
+                    call_ref(dst0, s_m, q_filt, noise, j, m_max);
+                    call_new(dst1, s_m, q_filt, noise, j, m_max);
+                    if (!float_near_abs_eps_array((INTFLOAT *)dst0, (INTFLOAT *)dst1, EPS, 128 * 2))
+                        fail();
+                    if (m_max == 128)
+                        bench_new(dst1, s_m, q_filt, noise, j, m_max);
+                }
             }
         }
     }

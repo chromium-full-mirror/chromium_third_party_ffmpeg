@@ -295,9 +295,10 @@ endfunc
 
 .macro apply_noise_common
         sxtw            x3, w3
-        sxtw            x5, w5
         movrel          x7, X(ff_sbr_noise_table)
         add             x3, x3, #1
+        subs            w5, w5, #2
+        b.lt            2f
 1:      and             x3, x3, #0x1ff
         add             x8, x7, x3, lsl #3
         add             x3, x3, #2
@@ -313,8 +314,23 @@ endfunc
         fcmeq           v7.4s, v3.4s, #0
         bif             v2.16b, v6.16b, v7.16b
         st1             {v2.4s}, [x0], #16
-        subs            x5, x5, #2
-        b.gt            1b
+        subs            w5, w5, #2
+        b.ge            1b
+2:      adds            w5, w5, #1
+        b.lt            3f
+        and             x3, x3, #0x1ff
+        add             x8, x7, x3, lsl #3
+        ld1             {v2.2s}, [x0]
+        ld1r            {v3.2s}, [x1]
+        ld1r            {v4.2s}, [x2]
+        ld1             {v5.2s}, [x8]
+        mov             v6.8b, v2.8b
+        fmla            v6.2s, v1.2s, v3.2s
+        fmla            v2.2s, v5.2s, v4.2s
+        fcmeq           v7.2s, v3.2s, #0
+        bif             v2.8b, v6.8b, v7.8b
+        st1             {v2.2s}, [x0]
+3:
 .endm
 
 function ff_sbr_hf_apply_noise_0_neon, export=1

@@ -380,7 +380,9 @@ apply_noise_main:
     shl    noiseq, 3
     pxor       m5, m5
     neg    countq
-.loop:
+    cmp    countq, -mmsize
+    jg     .tail2
+.loop4:
     mova       m1, [q_filtq + countq]
     movu       m3, [noiseq + NOISE_TABLE + 1*mmsize]
     movu       m4, [noiseq + NOISE_TABLE + 2*mmsize]
@@ -409,7 +411,44 @@ apply_noise_main:
     movu    [Yq + 2*countq], m6
     movu    [Yq + 2*countq + mmsize], m7
     add    countq, mmsize
-    jl      .loop
+    cmp    countq, -mmsize
+    jle    .loop4
+.tail2:
+    cmp    countq, -8
+    jg     .tail1
+    movq       m1, [q_filtq + countq]
+    movu       m3, [noiseq + NOISE_TABLE + 1*mmsize]
+    add    noiseq, mmsize
+    and    noiseq, 0x1ff<<3
+    punpckldq  m1, m1
+    mulps      m1, m3
+    movq       m3, [s_mq + countq]
+    punpckldq  m3, m3
+    pcmpeqd    m6, m3, m5
+    mulps      m3, m0
+    pand       m1, m6
+    movu       m6, [Yq + 2*countq]
+    addps      m3, m1
+    addps      m6, m3
+    movu    [Yq + 2*countq], m6
+    add    countq, 8
+.tail1:
+    test   countq, countq
+    jz     .end
+    movd       m1, [q_filtq + countq]
+    movq       m3, [noiseq + NOISE_TABLE + 1*mmsize]
+    punpckldq  m1, m1
+    mulps      m1, m3
+    movd       m3, [s_mq + countq]
+    punpckldq  m3, m3
+    pcmpeqd    m6, m3, m5
+    mulps      m3, m0
+    pand       m1, m6
+    movq       m6, [Yq + 2*countq]
+    addps      m3, m1
+    addps      m6, m3
+    movq    [Yq + 2*countq], m6
+.end:
     RET
 
 INIT_XMM sse
