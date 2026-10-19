@@ -15,6 +15,12 @@ version <next>:
 - H.264 data partitioning support
 - DSD (dsd_msbf) encoder
 - Rhetorex ADPCM decoder
+- ADPCM IMA Citrix decoder
+- Panasonic RW2 decoder
+- xHE-AAC encoding via libfdk-xhe-aac
+- jpegapp bitstream filter
+- Infinity IMM6 video decoder
+- Remove the asf_o demuxer
 
 
 version 9.0:

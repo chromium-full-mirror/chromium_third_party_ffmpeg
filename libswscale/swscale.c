@@ -35,7 +35,7 @@
 #include "config.h"
 #include "swscale_internal.h"
 #include "swscale.h"
-#if CONFIG_VULKAN
+#if CONFIG_SWSCALE_VULKAN
 #include "vulkan/ops.h"
 #endif
 
@@ -1542,7 +1542,7 @@ int sws_frame_setup(SwsContext *ctx, const AVFrame *dst, const AVFrame *src)
         if (dev_ctx->type != AV_HWDEVICE_TYPE_VULKAN)
             return AVERROR(ENOTSUP);
 
-#if CONFIG_UNSTABLE && CONFIG_VULKAN
+#if CONFIG_UNSTABLE && CONFIG_SWSCALE_VULKAN
         ret = ff_sws_vk_init(ctx, src_hwfc->device_ref);
         if (ret < 0)
             return ret;
@@ -1558,6 +1558,12 @@ int sws_frame_setup(SwsContext *ctx, const AVFrame *dst, const AVFrame *src)
 
         if ((src->flags ^ dst->flags) & AV_FRAME_FLAG_INTERLACED) {
             err_msg = "Cannot convert interlaced to progressive frames or vice versa.\n";
+            ret = AVERROR(EINVAL);
+            goto fail;
+        }
+
+        if (src_fmt.height <= 0 || dst_fmt.height <= 0) {
+            err_msg = "Interlaced frames need at least two lines";
             ret = AVERROR(EINVAL);
             goto fail;
         }
