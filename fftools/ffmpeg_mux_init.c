@@ -1563,9 +1563,12 @@ static int ost_add(Muxer *mux, const OptionsContext *o, enum AVMediaType type,
     }
 
     opt_match_per_stream_dbl(ost, &o->qscale, oc, st, &qscale);
-    if (ost->enc && qscale >= 0) {
-        ost->enc->flags          |= AV_CODEC_FLAG_QSCALE;
-        ost->enc->global_quality  = FF_QP2LAMBDA * qscale;
+    if (ost->enc) {
+        if (qscale >= 0) {
+            ost->enc->flags          |= AV_CODEC_FLAG_QSCALE;
+            ost->enc->global_quality  = FF_QP2LAMBDA * qscale;
+        } else
+            ost->enc->global_quality  = ost->enc->enc_ctx->global_quality;
     }
 
     if (ms->sch_idx >= 0) {
@@ -1660,6 +1663,25 @@ fail:
     return ret;
 }
 
+static int64_t score_new_packets_event_flag(const AVStreamGroup *stg)
+{
+    int64_t score = 0;
+
+    for (int j = 0; j < stg->nb_entries; j++) {
+        if (stg->entries[j]->type != AV_STREAM_GROUP_ENTRY_STREAM)
+            continue;
+
+        AVStream *st = stg->entries[j]->stream;
+
+        if (st->event_flags & AVSTREAM_EVENT_FLAG_NEW_PACKETS) {
+            score += 100000000;
+            break;
+        }
+    }
+
+    return score;
+}
+
 static int map_auto_video(Muxer *mux, const OptionsContext *o)
 {
     AVFormatContext *oc = mux->fc;
@@ -1680,24 +1702,32 @@ static int map_auto_video(Muxer *mux, const OptionsContext *o)
         int64_t file_best_score = 0;
         for (int i = 0; i < ifile->nb_stream_groups; i++) {
             InputStreamGroup *istg = ifile->stream_groups[i];
-            int64_t score = 0;
+            int64_t score;
 
             if (!istg->fg)
                 continue;
 
-            for (int j = 0; j < istg->stg->nb_streams; j++) {
-                AVStream *st = istg->stg->streams[j];
-
-                if (st->event_flags & AVSTREAM_EVENT_FLAG_NEW_PACKETS) {
-                    score = 100000000;
-                    break;
-                }
-            }
+            score = score_new_packets_event_flag(istg->stg);
 
             switch (istg->stg->type) {
             case AV_STREAM_GROUP_PARAMS_TILE_GRID: {
                 const AVStreamGroupTileGrid *tg = istg->stg->params.tile_grid;
                 score += tg->width * (int64_t)tg->height
+                           + 5000000*!!(istg->stg->disposition & AV_DISPOSITION_DEFAULT);
+                break;
+            }
+            case AV_STREAM_GROUP_PARAMS_ALPHA: {
+                const AVStreamGroupLayeredVideo *layered_video = istg->stg->params.layered_video;
+                for (int k = 0; k < istg->stg->nb_entries; k++) {
+                    const AVStreamGroupEntry *entry = istg->stg->entries[k];
+                    int disposition = entry->type == AV_STREAM_GROUP_ENTRY_STREAM
+                                       ? entry->stream->disposition
+                                       : entry->stream_group->disposition;
+                    if (istg->stg->entries[k]->type == AV_STREAM_GROUP_ENTRY_STREAM_GROUP)
+                        score += score_new_packets_event_flag(entry->stream_group);
+                    score += 5000000*!!(disposition & AV_DISPOSITION_DEFAULT);
+                }
+                score += layered_video->width * (int64_t)layered_video->height
                            + 5000000*!!(istg->stg->disposition & AV_DISPOSITION_DEFAULT);
                 break;
             }
@@ -2478,7 +2508,10 @@ static int of_serialize_options(Muxer *mux, void *obj, AVBPrint *bp)
     char *ptr;
     int ret;
 
-    ret = av_opt_serialize(obj, 0, AV_OPT_SERIALIZE_SKIP_DEFAULTS | AV_OPT_SERIALIZE_SEARCH_CHILDREN,
+    ret = av_opt_serialize(obj, AV_OPT_FLAG_DEPRECATED,
+                           AV_OPT_SERIALIZE_SKIP_DEFAULTS |
+                           AV_OPT_SERIALIZE_SEARCH_CHILDREN |
+                           AV_OPT_SERIALIZE_OPT_FLAGS_EXCLUDE,
                            &ptr, '=', ':');
     if (ret < 0) {
         av_log(mux, AV_LOG_ERROR, "Failed to serialize group\n");
@@ -2733,8 +2766,8 @@ static int of_parse_group_token(Muxer *mux, const char *token, char *ptr)
             ret = AVERROR(EINVAL);
             goto end;
         }
-        for (unsigned i = 0; i < oc->stream_groups[idx]->nb_streams; i++) {
-            ret = avformat_stream_group_add_stream(stg, oc->stream_groups[idx]->streams[i]);
+        for (unsigned i = 0; i < oc->stream_groups[idx]->nb_entries; i++) {
+            ret = avformat_stream_group_add_stream(stg, oc->stream_groups[idx]->entries[i]->stream);
             if (ret < 0)
                 goto end;
         }

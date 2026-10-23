@@ -1,3 +1,7 @@
+FATE_LIBSWSCALE += fate-sws-unscaled-threaded
+fate-sws-unscaled-threaded: libswscale/tests/unscaled_threaded$(EXESUF)
+fate-sws-unscaled-threaded: CMD = run libswscale/tests/unscaled_threaded$(EXESUF)
+
 FATE_LIBSWSCALE += fate-sws-pixdesc-query
 fate-sws-pixdesc-query: libswscale/tests/pixdesc_query$(EXESUF)
 fate-sws-pixdesc-query: CMD = run libswscale/tests/pixdesc_query$(EXESUF)
@@ -36,6 +40,16 @@ fate-sws-yuv-range: CMD = framecrc \
   -frames 1 \
   -vf scale=in_color_matrix=bt601:in_range=limited:out_color_matrix=bt601:out_range=full:flags=+accurate_rnd+bitexact
 
+# Partial bytes in the one-tap and bilinear two-tap monochrome ED paths.
+FATE_LIBSWSCALE_FFMPEG-$(call FILTERFRAMECRC, COLOR SCALE FORMAT) += fate-sws-monob-ed-tail \
+                                                                 fate-sws-monow-ed-tail \
+                                                                 fate-sws-monob-ed-tail-bilinear \
+                                                                 fate-sws-monow-ed-tail-bilinear
+fate-sws-monob-ed-tail: CMD = framecrc -lavfi color=white:s=100x8:r=1,scale=flags=bilinear+bitexact:sws_dither=ed,format=monob -frames:v 1
+fate-sws-monow-ed-tail: CMD = framecrc -lavfi color=black:s=100x8:r=1,scale=flags=bilinear+bitexact:sws_dither=ed,format=monow -frames:v 1
+fate-sws-monob-ed-tail-bilinear: CMD = framecrc -lavfi color=white:s=102x8:r=1,scale=102:16:flags=bilinear+bitexact:sws_dither=ed,format=monob -frames:v 1
+fate-sws-monow-ed-tail-bilinear: CMD = framecrc -lavfi color=black:s=102x8:r=1,scale=102:16:flags=bilinear+bitexact:sws_dither=ed,format=monow -frames:v 1
+
 ifeq ($(CONFIG_UNSTABLE),yes)
 SWS_UNSTABLE_BACKENDS-yes                            += c memcpy
 ifeq ($(ARCH_X86_64),yes)
@@ -44,9 +58,7 @@ endif
 ifeq ($(ARCH_AARCH64),yes)
 SWS_UNSTABLE_BACKENDS-$(HAVE_NEON)                   += aarch64
 endif
-# TODO: enable spirv tests once they pass on all Vulkan devices.
-# SWS_UNSTABLE_BACKENDS-$(HAVE_SPIRV_HEADERS_SPIRV_H)  += spirv
-# SWS_UNSTABLE_BACKENDS-$(HAVE_SPIRV_UNIFIED1_SPIRV_H) += spirv
+SWS_UNSTABLE_BACKENDS-$(CONFIG_SWSCALE_VULKAN)       += spirv
 
 # Set -hw default for Vulkan tests.
 fate-sws-unscaled-spirv fate-sws-unstable-spirv: SWS_HW = -hw default
@@ -65,7 +77,21 @@ $(FATE_SWS_UNSTABLE): CMD = run libswscale/tests/swscale$(EXESUF) -v 16 $(SWS_HW
 $(FATE_SWS_UNSTABLE): REF = /dev/null
 fate-sws-unstable: $(FATE_SWS_UNSTABLE)
 
-FATE_LIBSWSCALE += $(FATE_SWS_UNSCALED) $(FATE_SWS_UNSTABLE)
+# Also test unpadded and vertically flipped (negative stride) buffers
+SWS_CPU_BACKENDS := $(filter-out spirv,$(SWS_UNSTABLE_BACKENDS-yes))
+FATE_SWS_UNPADDED := $(SWS_CPU_BACKENDS:%=fate-sws-unpadded-%)
+$(FATE_SWS_UNPADDED): libswscale/tests/swscale$(EXESUF)
+$(FATE_SWS_UNPADDED): CMD = run libswscale/tests/swscale$(EXESUF) -v 16 -backends $(@:fate-sws-unpadded-%=%) -align_src 1 -align_dst 1 -p 0.01
+$(FATE_SWS_UNPADDED): REF = /dev/null
+fate-sws-unpadded: $(FATE_SWS_UNPADDED)
+
+FATE_SWS_FLIPPED := $(SWS_CPU_BACKENDS:%=fate-sws-flipped-%)
+$(FATE_SWS_FLIPPED): libswscale/tests/swscale$(EXESUF)
+$(FATE_SWS_FLIPPED): CMD = run libswscale/tests/swscale$(EXESUF) -v 16 -backends $(@:fate-sws-flipped-%=%) -align_src -1 -align_dst -1 -p 0.01
+$(FATE_SWS_FLIPPED): REF = /dev/null
+fate-sws-flipped: $(FATE_SWS_FLIPPED)
+
+FATE_LIBSWSCALE += $(FATE_SWS_UNSCALED) $(FATE_SWS_UNSTABLE) $(FATE_SWS_UNPADDED) $(FATE_SWS_FLIPPED)
 endif
 
 ifneq ($(HAVE_BIGENDIAN),yes)
