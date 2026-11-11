@@ -211,7 +211,8 @@ static HEIFItem *get_heif_item(MOVContext *c, unsigned id)
 
 /**
  * Get the current stream in the parsing process. This can either be the
- * latest stream added to the context, or the stream referenced by an item.
+ * stream of the trak being parsed, or the stream referenced by an item.
+ * Returns NULL when neither a trak nor an item is being parsed.
  */
 static AVStream *get_curr_st(MOVContext *c)
 {
@@ -221,8 +222,13 @@ static AVStream *get_curr_st(MOVContext *c)
     if (c->fc->nb_streams < 1)
         return NULL;
 
-    if (c->cur_item_id == -1)
+    if (c->cur_item_id == -1) {
+        if (c->trak_index < 0) {
+            av_log(c->fc, AV_LOG_WARNING, "Sample description atom outside TRAK\n");
+            return NULL;
+        }
         return c->fc->streams[c->fc->nb_streams-1];
+    }
 
     item = get_heif_item(c, c->cur_item_id);
     if (item)
@@ -864,6 +870,8 @@ static int mov_read_hdlr(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 
 static int mov_read_esds(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 {
+    if (!get_curr_st(c))
+        return 0;
     return ff_mov_read_esds(c->fc, pb);
 }
 
@@ -1355,9 +1363,9 @@ static int mov_read_wfex(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     AVStream *st;
     int ret;
 
-    if (c->fc->nb_streams < 1)
+    st = get_curr_st(c);
+    if (!st)
         return 0;
-    st = c->fc->streams[c->fc->nb_streams-1];
 
     if ((ret = ff_get_wav_header(c->fc, pb, st->codecpar, atom.size, 0)) < 0)
         av_log(c->fc, AV_LOG_WARNING, "get_wav_header failed\n");
@@ -2088,13 +2096,12 @@ static int mov_read_mvhd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     return 0;
 }
 
-static void set_last_stream_little_endian(AVFormatContext *fc)
+static void set_curr_stream_little_endian(MOVContext *c)
 {
-    AVStream *st;
+    AVStream *st = get_curr_st(c);
 
-    if (fc->nb_streams < 1)
+    if (!st)
         return;
-    st = fc->streams[fc->nb_streams-1];
 
     switch (st->codecpar->codec_id) {
     case AV_CODEC_ID_PCM_S16BE:
@@ -2122,7 +2129,7 @@ static int mov_read_enda(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     int little_endian = avio_rb16(pb) & 0xFF;
     av_log(c->fc, AV_LOG_TRACE, "enda %d\n", little_endian);
     if (little_endian == 1)
-        set_last_stream_little_endian(c->fc);
+        set_curr_stream_little_endian(c);
     return 0;
 }
 
@@ -2153,10 +2160,9 @@ static int mov_read_pcmc(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     format_flags = avio_r8(pb);
     pcm_sample_size = avio_r8(pb);
 
-    if (fc->nb_streams < 1)
-        return AVERROR_INVALIDDATA;
-
-    st = fc->streams[fc->nb_streams - 1];
+    st = get_curr_st(c);
+    if (!st)
+        return 0;
     sc = st->priv_data;
 
     if (sc->format == MOV_MP4_FPCM_TAG) {
@@ -2197,7 +2203,7 @@ static int mov_read_pcmc(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     }
 
     if (format_flags & 1) // indicates little-endian format. If not present, big-endian format is used
-        set_last_stream_little_endian(c->fc);
+        set_curr_stream_little_endian(c);
     st->codecpar->bits_per_coded_sample = av_get_bits_per_sample(st->codecpar->codec_id);
 
     return 0;
@@ -2730,7 +2736,7 @@ static int mov_read_cdsc_rndr(MOVContext* c, AVIOContext* pb, MOVAtom atom)
 
     st = get_curr_st(c);
     if (!st)
-        return AVERROR_INVALIDDATA;
+        return 0;
     sc = st->priv_data;
 
     MovTref *tag = mov_add_tref_tag(sc, atom.type);
@@ -3467,9 +3473,9 @@ static int mov_read_stsd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     MOVStreamContext *sc;
     int ret, entries;
 
-    if (c->fc->nb_streams < 1)
+    st = get_curr_st(c);
+    if (!st)
         return 0;
-    st = c->fc->streams[c->fc->nb_streams - 1];
     sc = st->priv_data;
 
     if (sc->extradata) {
@@ -7936,9 +7942,9 @@ static int mov_read_frma(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     enum AVCodecID id;
     AVStream *st;
 
-    if (c->fc->nb_streams < 1)
+    st = get_curr_st(c);
+    if (!st)
         return 0;
-    st = c->fc->streams[c->fc->nb_streams - 1];
     sc = st->priv_data;
 
     switch (sc->format)
